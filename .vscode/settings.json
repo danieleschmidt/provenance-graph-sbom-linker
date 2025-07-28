@@ -1,0 +1,242 @@
+{
+    "go.toolsManagement.checkForUpdates": "local",
+    "go.useLanguageServer": true,
+    "go.formatTool": "goimports",
+    "go.lintTool": "golangci-lint",
+    "go.lintFlags": [
+        "--fast"
+    ],
+    "go.testFlags": [
+        "-v",
+        "-race",
+        "-count=1"
+    ],
+    "go.testTimeout": "30s",
+    "go.coverOnSave": true,
+    "go.coverOnSaveTimeout": "30s",
+    "go.coverageDecorator": {
+        "type": "gutter",
+        "coveredHighlightColor": "rgba(64,128,64,0.5)",
+        "uncoveredHighlightColor": "rgba(128,64,64,0.5)",
+        "coveredGutterStyle": "blockgreen",
+        "uncoveredGutterStyle": "blockred"
+    },
+    "go.testExplorer.enable": true,
+    "go.testExplorer.alwaysRunBenchmarks": false,
+    "go.addTags": {
+        "tags": "json",
+        "options": "json=omitempty",
+        "promptForTags": false,
+        "transform": "camelcase"
+    },
+    "go.buildTags": "",
+    "go.buildFlags": [],
+    "go.installDependenciesWhenBuilding": true,
+    "go.gocodeAutoBuild": false,
+    "go.vetOnSave": "package",
+    "go.vetFlags": [],
+    "go.buildOnSave": "package",
+    "go.lintOnSave": "package",
+    "gopls": {
+        "ui.completion.usePlaceholders": true,
+        "ui.diagnostic.staticcheck": true,
+        "ui.diagnostic.vulncheck": "Imports",
+        "formatting.gofumpt": true,
+        "formatting.local": "github.com/your-org/provenance-graph-sbom-linker",
+        "analyses": {
+            "fieldalignment": true,
+            "nilness": true,
+            "unusedparams": true,
+            "unusedwrite": true,
+            "useany": true
+        },
+        "hints": {
+            "assignVariableTypes": true,
+            "compositeLiteralFields": true,
+            "compositeLiteralTypes": true,
+            "constantValues": true,
+            "functionTypeParameters": true,
+            "parameterNames": true,
+            "rangeVariableTypes": true
+        },
+        "linkTarget": "pkg.go.dev",
+        "local": "github.com/your-org/provenance-graph-sbom-linker"
+    },
+    "python.defaultInterpreterPath": "/usr/local/bin/python3",
+    "python.formatting.provider": "none",
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        },
+        "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "python.linting.enabled": true,
+    "python.linting.ruffEnabled": true,
+    "python.linting.pylintEnabled": false,
+    "python.linting.flake8Enabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "."
+    ],
+    "ruff.args": [
+        "--config=pyproject.toml"
+    ],
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.formatOnType": false,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": true,
+        "source.fixAll": true
+    },
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.detectIndentation": true,
+    "files.associations": {
+        "*.yml": "yaml",
+        "*.yaml": "yaml",
+        "Dockerfile*": "dockerfile",
+        "*.cypher": "cypher",
+        "*.cql": "cypher",
+        "*.gotmpl": "go-template",
+        "*.tmpl": "go-template",
+        "go.mod": "go.mod",
+        "go.sum": "go.sum",
+        "go.work": "go.work",
+        "*.proto": "proto3"
+    },
+    "yaml.schemas": {
+        "https://json.schemastore.org/github-workflow.json": ".github/workflows/*.yml",
+        "https://json.schemastore.org/github-action.json": ".github/actions/*/action.yml",
+        "https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json": "docker-compose*.yml",
+        "https://json.schemastore.org/chart.json": "charts/*/Chart.yaml",
+        "https://json.schemastore.org/kubernetes.json": "deploy/kubernetes/*.yaml"
+    },
+    "yaml.format.enable": true,
+    "yaml.validate": true,
+    "yaml.hover": true,
+    "yaml.completion": true,
+    "docker.dockerComposeBuild": true,
+    "docker.dockerComposeDetached": true,
+    "docker.showStartPage": false,
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.env.linux": {
+        "CGO_ENABLED": "1",
+        "GOOS": "linux",
+        "GOARCH": "amd64"
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/vendor": true,
+        "**/dist": true,
+        "**/build": true,
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/coverage": true,
+        "**/*.pb.go": true,
+        "**/*_mock.go": true,
+        "**/mocks": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true
+    },
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/*/**": true,
+        "**/vendor/**": true,
+        "**/dist/**": true,
+        "**/build/**": true,
+        "**/coverage/**": true
+    },
+    "json.schemas": [
+        {
+            "fileMatch": [
+                "package.json"
+            ],
+            "url": "https://json.schemastore.org/package.json"
+        },
+        {
+            "fileMatch": [
+                "tsconfig.json",
+                "tsconfig.*.json"
+            ],
+            "url": "https://json.schemastore.org/tsconfig.json"
+        }
+    ],
+    "typescript.preferences.quoteStyle": "double",
+    "typescript.preferences.includePackageJsonAutoImports": "on",
+    "typescript.suggest.autoImports": true,
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact"
+    ],
+    "eslint.format.enable": true,
+    "prettier.requireConfig": true,
+    "prettier.configPath": ".prettierrc",
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.wordWrap": "on",
+        "editor.quickSuggestions": {
+            "comments": "off",
+            "strings": "off",
+            "other": "off"
+        }
+    },
+    "markdown.preview.fontSize": 14,
+    "markdown.preview.lineHeight": 1.6,
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true,
+    "git.enableCommitSigning": false,
+    "gitlens.currentLine.enabled": false,
+    "gitlens.hovers.enabled": true,
+    "gitlens.codeLens.enabled": false,
+    "extensions.ignoreRecommendations": false,
+    "workbench.colorTheme": "Default Dark+",
+    "workbench.iconTheme": "vs-seti",
+    "security.workspace.trust.untrustedFiles": "open",
+    "redhat.telemetry.enabled": false,
+    "telemetry.telemetryLevel": "off",
+    "github.copilot.enable": {
+        "*": true,
+        "yaml": true,
+        "plaintext": false,
+        "markdown": true,
+        "go": true,
+        "python": true,
+        "javascript": true,
+        "typescript": true
+    }
+}

@@ -205,3 +205,189 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Go specific
+vendor/
+*.out
+*.prof
+coverage.txt
+coverage.html
+*.test
+*.bench
+debug
+bin/
+dist/
+tmp/
+
+# Generated files
+*.pb.go
+*_mock.go
+*.gen.go
+*_string.go
+docs/api/
+
+# Build artifacts
+main
+provenance-linker
+provenance-*
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache directories
+.cache/
+.npm/
+.yarn/
+node_modules/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.vscode/launch.json
+.vscode/tasks.json
+
+# Local environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Security
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+private_key*
+public_key*
+cosign.*
+secrets/
+
+# Docker
+.dockerignore
+
+# Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# Helm
+charts/*/charts/
+charts/*/requirements.lock
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# Database data
+neo4j_data/
+redis_data/
+
+# Test artifacts
+test-results/
+test-reports/
+integration-test-data/
+
+# Performance profiling
+*.pprof
+profile.out
+mem.prof
+cpu.prof
+
+# Benchmarks
+benchmark-results/
+*.bench
+
+# Documentation
+docs/_build/
+docs/site/
+
+# Release artifacts
+release/
+packages/
+archives/
+
+# Local development
+local/
+scripts/local/
+dev-env/

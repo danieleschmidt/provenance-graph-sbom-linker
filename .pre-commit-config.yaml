@@ -1,0 +1,221 @@
+# Pre-commit configuration for Provenance Graph SBOM Linker
+# =============================================================================
+
+repos:
+  # =============================================================================
+  # Standard hooks
+  # =============================================================================
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-toml
+      - id: check-xml
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+      - id: fix-byte-order-marker
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # =============================================================================
+  # Go hooks
+  # =============================================================================
+  - repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+      - id: go-fmt
+        args: [-s]
+      - id: go-imports
+      - id: go-vet-mod
+      - id: go-mod-tidy
+      - id: go-unit-tests
+      - id: go-build-mod
+      - id: go-mod-vendor
+
+  # =============================================================================
+  # Security hooks
+  # =============================================================================
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: package.lock.json
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint
+        args: [--ignore, DL3008, --ignore, DL3009, --ignore, DL3015]
+
+  # =============================================================================
+  # Code quality hooks
+  # =============================================================================
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.55.2
+    hooks:
+      - id: golangci-lint
+        args: [--timeout=5m]
+
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+      - id: black
+        language_version: python3
+        files: '\.py$'
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # =============================================================================
+  # Documentation hooks
+  # =============================================================================
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.37.0
+    hooks:
+      - id: markdownlint
+        args: [--fix]
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: [--format, parsable, --strict]
+
+  # =============================================================================
+  # Formatting hooks
+  # =============================================================================
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.0.3
+    hooks:
+      - id: prettier
+        types_or: [yaml, json, markdown, javascript, typescript]
+        exclude: |
+          (?x)^(
+              \.github/.*\.yml|
+              charts/.*/templates/.*\.yaml|
+              go\.sum
+          )$
+
+  # =============================================================================
+  # License hooks
+  # =============================================================================
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.4
+    hooks:
+      - id: insert-license
+        files: '\.go$'
+        args:
+          - --license-filepath
+          - .license-header.txt
+          - --comment-style
+          - //
+
+  # =============================================================================
+  # Shell script hooks
+  # =============================================================================
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+      - id: shellcheck
+        args: [--severity=warning]
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.7.0-4
+    hooks:
+      - id: shfmt
+        args: [-w, -s, -i, '4']
+
+  # =============================================================================
+  # Kubernetes hooks
+  # =============================================================================
+  - repo: https://github.com/gruntwork-io/pre-commit
+    rev: v0.1.22
+    hooks:
+      - id: helmlint
+        files: '.*\.ya?ml$'
+        exclude: |
+          (?x)^(
+              \.github/.*|
+              docs/.*|
+              test/.*
+          )$
+
+  # =============================================================================
+  # Custom hooks
+  # =============================================================================
+  - repo: local
+    hooks:
+      - id: go-test
+        name: go test
+        entry: make test-unit
+        language: system
+        files: '\.go$'
+        pass_filenames: false
+
+      - id: go-build
+        name: go build
+        entry: make build
+        language: system
+        files: '\.go$'
+        pass_filenames: false
+
+      - id: security-scan
+        name: security scan
+        entry: make security-scan
+        language: system
+        files: '\.go$'
+        pass_filenames: false
+
+      - id: license-check
+        name: license check
+        entry: scripts/check-licenses.sh
+        language: script
+        files: 'go\.(mod|sum)$'
+        pass_filenames: false
+
+      - id: sbom-generation
+        name: SBOM generation
+        entry: scripts/generate-sbom.sh
+        language: script
+        files: 'go\.(mod|sum)$'
+        pass_filenames: false
+
+# =============================================================================
+# Global configuration
+# =============================================================================
+
+default_stages: [commit, push]
+fail_fast: false
+minimum_pre_commit_version: 3.0.0
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [go-test, go-build, security-scan, license-check, sbom-generation]
+  submodules: false
