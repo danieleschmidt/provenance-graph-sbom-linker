@@ -1,0 +1,369 @@
+# Docker Compose configuration for testing environment
+# This file sets up isolated test services for integration and E2E tests
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Database Services
+  # =============================================================================
+  
+  neo4j-test:
+    image: neo4j:5.15
+    container_name: provenance-neo4j-test
+    ports:
+      - "7688:7687"  # Different port to avoid conflicts
+      - "7475:7474"  # Different port for browser
+    environment:
+      NEO4J_AUTH: neo4j/testpassword
+      NEO4J_dbms_memory_heap_initial__size: 256m
+      NEO4J_dbms_memory_heap_max__size: 512m
+      NEO4J_dbms_memory_pagecache_size: 256m
+      NEO4J_dbms_default__database: testdb
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,algo.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*,algo.*
+      # Enable APOC procedures for testing
+      NEO4J_PLUGINS: '["apoc"]'
+    volumes:
+      - neo4j-test-data:/data
+      - neo4j-test-logs:/logs
+      - neo4j-test-import:/var/lib/neo4j/import
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p testpassword 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis-test:
+    image: redis:7-alpine
+    container_name: provenance-redis-test
+    ports:
+      - "6380:6379"  # Different port to avoid conflicts
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-test-data:/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # =============================================================================
+  # Storage Services
+  # =============================================================================
+
+  minio-test:
+    image: minio/minio:latest
+    container_name: provenance-minio-test
+    ports:
+      - "9001:9000"  # API port
+      - "9002:9001"  # Console port
+    environment:
+      MINIO_ROOT_USER: testuser
+      MINIO_ROOT_PASSWORD: testpassword123
+      MINIO_REGION_NAME: us-east-1
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-test-data:/data
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # MinIO client for bucket creation
+  minio-setup:
+    image: minio/mc:latest
+    container_name: provenance-minio-setup
+    depends_on:
+      minio-test:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: http://minio-test:9000
+      MINIO_ACCESS_KEY: testuser
+      MINIO_SECRET_KEY: testpassword123
+    networks:
+      - test-network
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set testminio http://minio-test:9000 testuser testpassword123;
+      mc mb testminio/test-artifacts;
+      mc mb testminio/test-sboms;
+      mc mb testminio/test-signatures;
+      mc policy set public testminio/test-artifacts;
+      exit 0;
+      "
+
+  # =============================================================================
+  # Observability Services
+  # =============================================================================
+
+  jaeger-test:
+    image: jaegertracing/all-in-one:latest
+    container_name: provenance-jaeger-test
+    ports:
+      - "16687:16686"  # UI port
+      - "14269:14268"  # HTTP collector port
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+      COLLECTOR_ZIPKIN_HOST_PORT: 9411
+    networks:
+      - test-network
+    command: [
+      "--log-level=warn",
+      "--memory.max-traces=10000",
+      "--query.max-clock-skew-adjustment=1s"
+    ]
+
+  prometheus-test:
+    image: prom/prometheus:latest
+    container_name: provenance-prometheus-test
+    ports:
+      - "9091:9090"  # Different port to avoid conflicts
+    volumes:
+      - ./test/config/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-test-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1h'  # Short retention for tests
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - test-network
+
+  # =============================================================================
+  # Mock Services
+  # =============================================================================
+
+  # Mock GitHub API server for testing webhooks
+  github-mock:
+    image: mockoon/cli:latest
+    container_name: provenance-github-mock
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./test/mocks/github-api.json:/data/github-api.json
+    command: ["--data", "/data/github-api.json", "--port", "3000"]
+    networks:
+      - test-network
+
+  # Mock Container Registry
+  registry-mock:
+    image: registry:2
+    container_name: provenance-registry-mock
+    ports:
+      - "5001:5000"
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /var/lib/registry
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    volumes:
+      - registry-test-data:/var/lib/registry
+      - ./test/config/registry-htpasswd:/auth/htpasswd
+    networks:
+      - test-network
+
+  # =============================================================================
+  # Test Database Migration
+  # =============================================================================
+
+  db-migrate:
+    image: migrate/migrate:latest
+    container_name: provenance-db-migrate
+    depends_on:
+      neo4j-test:
+        condition: service_healthy
+    volumes:
+      - ./test/migrations:/migrations
+    networks:
+      - test-network
+    command: [
+      "-path", "/migrations",
+      "-database", "neo4j://neo4j:testpassword@neo4j-test:7687/testdb",
+      "up"
+    ]
+
+  # =============================================================================
+  # Test Application Services
+  # =============================================================================
+
+  provenance-api-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: test
+    container_name: provenance-api-test
+    ports:
+      - "8081:8080"  # Different port to avoid conflicts
+    environment:
+      # Database configuration
+      NEO4J_URI: bolt://neo4j-test:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: testpassword
+      NEO4J_DATABASE: testdb
+      
+      # Cache configuration
+      REDIS_URL: redis://redis-test:6379/1
+      
+      # Storage configuration
+      OBJECT_STORAGE_ENDPOINT: minio-test:9000
+      OBJECT_STORAGE_ACCESS_KEY: testuser
+      OBJECT_STORAGE_SECRET_KEY: testpassword123
+      OBJECT_STORAGE_BUCKET: test-artifacts
+      OBJECT_STORAGE_USE_SSL: false
+      
+      # Observability
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger-test:14268/api/traces
+      PROMETHEUS_ENDPOINT: http://prometheus-test:9090
+      
+      # Test mode
+      ENVIRONMENT: test
+      LOG_LEVEL: debug
+      DEBUG_MODE: true
+      
+      # Mock services
+      GITHUB_API_URL: http://github-mock:3000
+      REGISTRY_URL: http://registry-mock:5000
+      
+    depends_on:
+      neo4j-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+      minio-test:
+        condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # =============================================================================
+  # Test Utilities
+  # =============================================================================
+
+  # Newman for API testing
+  newman-test:
+    image: postman/newman:latest
+    container_name: provenance-newman-test
+    depends_on:
+      provenance-api-test:
+        condition: service_healthy
+    volumes:
+      - ./test/postman:/etc/newman
+    networks:
+      - test-network
+    command: [
+      "run", "/etc/newman/provenance-api-tests.json",
+      "--environment", "/etc/newman/test-environment.json",
+      "--reporters", "cli,json",
+      "--reporter-json-export", "/etc/newman/results.json"
+    ]
+
+  # Test data seeder
+  test-seeder:
+    build:
+      context: .
+      dockerfile: Dockerfile.seeder
+    container_name: provenance-test-seeder
+    depends_on:
+      provenance-api-test:
+        condition: service_healthy
+    environment:
+      API_URL: http://provenance-api-test:8080
+      NEO4J_URI: bolt://neo4j-test:7687
+      NEO4J_USERNAME: neo4j
+      NEO4J_PASSWORD: testpassword
+    volumes:
+      - ./test/fixtures:/fixtures
+    networks:
+      - test-network
+    command: ["./seed-test-data"]
+
+# =============================================================================
+# Networks and Volumes
+# =============================================================================
+
+networks:
+  test-network:
+    name: provenance-test-network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  neo4j-test-data:
+    name: provenance-neo4j-test-data
+  neo4j-test-logs:
+    name: provenance-neo4j-test-logs
+  neo4j-test-import:
+    name: provenance-neo4j-test-import
+  redis-test-data:
+    name: provenance-redis-test-data
+  minio-test-data:
+    name: provenance-minio-test-data
+  prometheus-test-data:
+    name: provenance-prometheus-test-data
+  registry-test-data:
+    name: provenance-registry-test-data
+
+# =============================================================================
+# Service Profiles
+# =============================================================================
+
+# Use profiles to run different test configurations
+profiles:
+  # Minimal profile for unit tests (just databases)
+  unit:
+    services:
+      - neo4j-test
+      - redis-test
+
+  # Integration profile (databases + storage)
+  integration:
+    services:
+      - neo4j-test
+      - redis-test
+      - minio-test
+      - minio-setup
+
+  # Full E2E profile (all services)
+  e2e:
+    services:
+      - neo4j-test
+      - redis-test
+      - minio-test
+      - minio-setup
+      - jaeger-test
+      - prometheus-test
+      - github-mock
+      - registry-mock
+      - db-migrate
+      - provenance-api-test
+      - test-seeder
+
+  # Performance testing profile
+  performance:
+    services:
+      - neo4j-test
+      - redis-test
+      - minio-test
+      - minio-setup
+      - provenance-api-test
+      - prometheus-test

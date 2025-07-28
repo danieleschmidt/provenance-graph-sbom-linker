@@ -1,0 +1,160 @@
+# Test coverage configuration for Provenance Graph SBOM Linker
+# Documentation: https://github.com/vladopajic/go-test-coverage
+
+# Coverage thresholds
+threshold:
+  # File coverage threshold
+  file: 80
+  # Package coverage threshold  
+  package: 85
+  # Total coverage threshold
+  total: 85
+
+# Override thresholds for specific files/packages
+override:
+  # Generated files - lower threshold
+  "**/*.pb.go": 0
+  "**/*_mock.go": 0
+  "**/*_generated.go": 0
+  
+  # Main packages - can have lower coverage due to initialization code
+  "cmd/**": 60
+  
+  # Critical packages - require higher coverage
+  "internal/auth/**": 95
+  "internal/crypto/**": 95
+  "pkg/verification/**": 95
+  
+  # Database packages - require high coverage for data integrity
+  "internal/database/**": 90
+  
+  # API handlers - require high coverage for security
+  "internal/handlers/**": 90
+
+# Exclude patterns
+exclude:
+  # Exclude test files from coverage calculation
+  - "**/*_test.go"
+  
+  # Exclude generated code
+  - "**/*.pb.go"
+  - "**/*_mock.go" 
+  - "**/*_generated.go"
+  
+  # Exclude vendor directory
+  - "vendor/**"
+  
+  # Exclude build artifacts
+  - "bin/**"
+  - "dist/**"
+  - "build/**"
+  
+  # Exclude documentation
+  - "docs/**"
+  
+  # Exclude scripts
+  - "scripts/**"
+  
+  # Exclude test directories that contain test utilities
+  - "test/**"
+  
+  # Exclude main function files (hard to test meaningfully)
+  - "cmd/*/main.go"
+
+# Coverage report format
+report:
+  # Generate HTML report
+  html: true
+  
+  # HTML report output path
+  html-path: "coverage.html"
+  
+  # Generate coverage badge
+  badge: true
+  
+  # Badge output path
+  badge-path: "coverage-badge.svg"
+
+# Integration with CI/CD
+ci:
+  # Fail CI if coverage drops below threshold
+  fail-under-threshold: true
+  
+  # Post coverage comment on PR (when supported)
+  comment: true
+  
+  # Compare with base branch coverage
+  compare-base: true
+
+# Local development settings
+local:
+  # Show coverage for all files (not just changed files)
+  show-all: false
+  
+  # Sort by coverage percentage
+  sort: "coverage"
+  
+  # Show only files below threshold
+  filter-below: true
+
+# Profile settings for different environments
+profiles:
+  # Development profile - more lenient
+  dev:
+    threshold:
+      file: 70
+      package: 75
+      total: 75
+    exclude:
+      - "**/*_test.go"
+      - "**/*.pb.go"
+      - "vendor/**"
+  
+  # CI profile - standard thresholds
+  ci:
+    threshold:
+      file: 80
+      package: 85
+      total: 85
+    exclude:
+      - "**/*_test.go"
+      - "**/*.pb.go"
+      - "vendor/**"
+      - "cmd/*/main.go"
+  
+  # Release profile - strict thresholds
+  release:
+    threshold:
+      file: 85
+      package: 90
+      total: 90
+    override:
+      "internal/auth/**": 98
+      "internal/crypto/**": 98
+      "pkg/verification/**": 98
+    exclude:
+      - "**/*_test.go"
+      - "**/*.pb.go"
+      - "vendor/**"
+
+# Advanced settings
+advanced:
+  # Minimum number of statements required for coverage calculation
+  min-statements: 5
+  
+  # Enable race condition detection in tests
+  race: true
+  
+  # Test timeout
+  timeout: "30s"
+  
+  # Build tags for tests
+  build-tags:
+    - "integration"
+    - "e2e"
+  
+  # Go test flags
+  test-flags:
+    - "-v"
+    - "-race"
+    - "-count=1"
