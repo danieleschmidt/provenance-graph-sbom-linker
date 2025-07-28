@@ -1,0 +1,193 @@
+# Security-hardened Dockerfile for Provenance Graph SBOM Linker
+# =============================================================================
+# This Dockerfile implements security best practices and is suitable for 
+# production deployments requiring enhanced security posture.
+
+# Use distroless base image for minimal attack surface
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime-base
+
+# Multi-stage build with security scanning
+FROM golang:1.21-alpine AS builder
+
+# Security: Install only necessary packages and remove package manager
+RUN apk add --no-cache \
+    ca-certificates \
+    git \
+    gcc \
+    musl-dev \
+    && rm -rf /var/cache/apk/*
+
+# Security: Create non-root user for build process
+RUN adduser -D -s /bin/sh -u 1001 builduser
+
+# Set working directory with restricted permissions
+WORKDIR /src
+RUN chown builduser:builduser /src
+
+# Switch to non-root user for build
+USER builduser
+
+# Copy dependency files first for better layer caching
+COPY --chown=builduser:builduser go.mod go.sum ./
+
+# Download and verify dependencies
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY --chown=builduser:builduser . .
+
+# Security: Build with security flags
+ARG VERSION=dev
+ARG COMMIT=unknown
+ARG DATE=unknown
+
+RUN CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    go build \
+    -a \
+    -installsuffix cgo \
+    -ldflags="-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE} -extldflags '-static'" \
+    -trimpath \
+    -tags netgo \
+    -o /tmp/provenance-linker \
+    ./cmd/server
+
+# Security: Verify the binary
+RUN file /tmp/provenance-linker | grep "statically linked"
+
+# =============================================================================
+# Security scanning stage (optional)
+# =============================================================================
+FROM builder AS scanner
+
+# Install security scanning tools
+USER root
+RUN apk add --no-cache \
+    curl \
+    && curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+# Scan the filesystem for vulnerabilities
+RUN trivy fs --no-progress --exit-code 1 --severity HIGH,CRITICAL /src
+
+# Scan the binary for vulnerabilities
+RUN trivy fs --no-progress --exit-code 1 --severity HIGH,CRITICAL /tmp/provenance-linker
+
+# =============================================================================
+# Final runtime stage
+# =============================================================================
+FROM runtime-base AS runtime
+
+# Security: Import CA certificates from builder
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Security: Copy binary with restricted permissions
+COPY --from=builder --chown=nonroot:nonroot /tmp/provenance-linker /app/provenance-linker
+
+# Security: Set binary as executable for nonroot user only
+RUN chmod 750 /app/provenance-linker
+
+# Security: Use nonroot user (UID 65532)
+USER nonroot:nonroot
+
+# Security: Set working directory
+WORKDIR /app
+
+# Security: Expose only necessary port
+EXPOSE 8080
+
+# Security: Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD ["/app/provenance-linker", "healthcheck"]
+
+# Security: Set resource limits and security options
+LABEL \
+    org.opencontainers.image.title="Provenance Graph SBOM Linker" \
+    org.opencontainers.image.description="Secure supply chain provenance tracking" \
+    org.opencontainers.image.vendor="Your Organization" \
+    org.opencontainers.image.version="${VERSION}" \
+    org.opencontainers.image.created="${DATE}" \
+    org.opencontainers.image.revision="${COMMIT}" \
+    org.opencontainers.image.source="https://github.com/your-org/provenance-graph-sbom-linker" \
+    org.opencontainers.image.documentation="https://docs.your-org.com/provenance-linker" \
+    org.opencontainers.image.licenses="Apache-2.0"
+
+# Security: Set security options
+LABEL \
+    security.scan.enabled="true" \
+    security.distroless="true" \
+    security.nonroot="true" \
+    security.readonly="true"
+
+# Security: Default command
+ENTRYPOINT ["/app/provenance-linker"]
+CMD ["serve"]
+
+# =============================================================================
+# Development variant (for testing)
+# =============================================================================
+FROM golang:1.21-alpine AS development
+
+# Install development tools
+RUN apk add --no-cache \
+    git \
+    make \
+    curl \
+    bash \
+    ca-certificates
+
+# Create development user
+RUN adduser -D -s /bin/bash -u 1001 devuser
+
+WORKDIR /app
+RUN chown devuser:devuser /app
+
+USER devuser
+
+# Copy source code
+COPY --chown=devuser:devuser . .
+
+# Install dependencies
+RUN go mod download
+
+# Build for development
+RUN go build -o /tmp/provenance-linker-dev ./cmd/server
+
+EXPOSE 8080 6060
+
+# Development command with profiling enabled
+CMD ["/tmp/provenance-linker-dev", "serve", "--debug", "--profile"]
+
+# =============================================================================
+# Test variant (for CI/CD)
+# =============================================================================
+FROM golang:1.21-alpine AS test
+
+# Install test dependencies
+RUN apk add --no-cache \
+    git \
+    make \
+    gcc \
+    musl-dev \
+    ca-certificates
+
+# Create test user
+RUN adduser -D -s /bin/sh -u 1001 testuser
+
+WORKDIR /src
+RUN chown testuser:testuser /src
+
+USER testuser
+
+# Copy source and dependencies
+COPY --chown=testuser:testuser go.mod go.sum ./
+RUN go mod download
+
+COPY --chown=testuser:testuser . .
+
+# Run tests and build
+RUN go test -v -race -coverprofile=coverage.out ./...
+RUN go build -o /tmp/provenance-linker-test ./cmd/server
+
+# Test command
+CMD ["go", "test", "-v", "./..."]

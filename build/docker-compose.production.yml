@@ -1,0 +1,584 @@
+# Production Docker Compose for Provenance Graph SBOM Linker
+# =============================================================================
+# This configuration is optimized for production deployments with
+# security, monitoring, and high availability features.
+
+version: '3.8'
+
+services:
+  # =============================================================================
+  # Load Balancer / Reverse Proxy
+  # =============================================================================
+  
+  traefik:
+    image: traefik:v3.0
+    container_name: provenance-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard (secure this in production)
+    environment:
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_INSECURE=false
+      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
+      - TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:443
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_EMAIL=${ACME_EMAIL}
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_STORAGE=/acme.json
+      - TRAEFIK_CERTIFICATESRESOLVERS_LETSENCRYPT_ACME_HTTPCHALLENGE_ENTRYPOINT=web
+    volumes:
+      - ./config/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      - traefik-acme:/acme.json
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - web
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.middlewares=auth"
+
+  # =============================================================================
+  # Core Application Services
+  # =============================================================================
+  
+  provenance-api:
+    image: ${REGISTRY}/provenance-graph-sbom-linker:${VERSION:-latest}
+    container_name: provenance-api-1
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      # Database configuration
+      - NEO4J_URI=bolt://neo4j-cluster:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD_FILE=/run/secrets/neo4j_password
+      - NEO4J_DATABASE=provenance
+      - NEO4J_MAX_CONNECTION_POOL_SIZE=50
+      
+      # Cache configuration
+      - REDIS_URL=redis://redis-cluster:6379
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+      
+      # Object storage
+      - OBJECT_STORAGE_ENDPOINT=minio-cluster:9000
+      - OBJECT_STORAGE_ACCESS_KEY_FILE=/run/secrets/minio_access_key
+      - OBJECT_STORAGE_SECRET_KEY_FILE=/run/secrets/minio_secret_key
+      - OBJECT_STORAGE_BUCKET=provenance-artifacts
+      - OBJECT_STORAGE_USE_SSL=true
+      
+      # Security
+      - JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - TLS_ENABLED=true
+      - TLS_CERT_PATH=/etc/ssl/certs/server.crt
+      - TLS_KEY_PATH=/etc/ssl/private/server.key
+      
+      # Observability
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - PROMETHEUS_ENABLED=true
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      
+      # Application
+      - ENVIRONMENT=production
+      - CORS_ENABLED=true
+      - CORS_ALLOWED_ORIGINS=https://${DOMAIN},https://dashboard.${DOMAIN}
+      
+    volumes:
+      - ./config/app:/app/config:ro
+      - ./certs:/etc/ssl:ro
+      - app-logs:/app/logs
+    secrets:
+      - neo4j_password
+      - redis_password
+      - minio_access_key
+      - minio_secret_key
+      - jwt_secret
+    networks:
+      - web
+      - internal
+      - database
+    depends_on:
+      neo4j-cluster:
+        condition: service_healthy
+      redis-cluster:
+        condition: service_healthy
+      minio-cluster:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "https://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.api.loadbalancer.server.port=8080"
+      - "traefik.http.services.api.loadbalancer.healthcheck.path=/health"
+
+  # Web Dashboard
+  provenance-dashboard:
+    image: ${REGISTRY}/provenance-dashboard:${VERSION:-latest}
+    container_name: provenance-dashboard
+    restart: unless-stopped
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    environment:
+      - API_URL=https://api.${DOMAIN}
+      - NODE_ENV=production
+    networks:
+      - web
+      - internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`dashboard.${DOMAIN}`)"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.services.dashboard.loadbalancer.server.port=3000"
+
+  # =============================================================================
+  # Database Services
+  # =============================================================================
+  
+  neo4j-cluster:
+    image: neo4j:5.15-enterprise
+    container_name: provenance-neo4j-core-1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    environment:
+      - NEO4J_AUTH=neo4j/$(cat /run/secrets/neo4j_password)
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_EDITION=enterprise
+      
+      # Clustering configuration
+      - NEO4J_causal__clustering_minimum__core__cluster__size__at__formation=3
+      - NEO4J_causal__clustering_minimum__core__cluster__size__at__runtime=3
+      - NEO4J_causal__clustering_initial__discovery__members=neo4j-cluster:5000,neo4j-core-2:5000,neo4j-core-3:5000
+      - NEO4J_causal__clustering_discovery__listen__address=0.0.0.0:5000
+      - NEO4J_causal__clustering_transaction__listen__address=0.0.0.0:6000
+      - NEO4J_causal__clustering_raft__listen__address=0.0.0.0:7000
+      
+      # Performance tuning
+      - NEO4J_dbms_memory_heap_initial__size=2G
+      - NEO4J_dbms_memory_heap_max__size=4G
+      - NEO4J_dbms_memory_pagecache_size=2G
+      - NEO4J_dbms_tx__log_rotation_retention__policy=2G size
+      
+      # Security
+      - NEO4J_dbms_ssl_policy_bolt_enabled=true
+      - NEO4J_dbms_ssl_policy_bolt_base__directory=/var/lib/neo4j/certificates/bolt
+      - NEO4J_dbms_ssl_policy_https_enabled=true
+      - NEO4J_dbms_ssl_policy_https_base__directory=/var/lib/neo4j/certificates/https
+      
+      # Monitoring
+      - NEO4J_metrics_prometheus_enabled=true
+      - NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004
+      
+    volumes:
+      - neo4j-data-1:/data
+      - neo4j-logs-1:/logs
+      - neo4j-import:/var/lib/neo4j/import
+      - neo4j-plugins:/plugins
+      - ./certs/neo4j:/var/lib/neo4j/certificates:ro
+    secrets:
+      - neo4j_password
+    networks:
+      - database
+      - monitoring
+    ports:
+      - "7687:7687"  # Bolt
+      - "7474:7474"  # HTTP
+      - "7473:7473"  # HTTPS
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p $(cat /run/secrets/neo4j_password) 'RETURN 1'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+  # Additional Neo4j core nodes (for clustering)
+  neo4j-core-2:
+    extends: neo4j-cluster
+    container_name: provenance-neo4j-core-2
+    volumes:
+      - neo4j-data-2:/data
+      - neo4j-logs-2:/logs
+      - neo4j-import:/var/lib/neo4j/import
+      - neo4j-plugins:/plugins
+      - ./certs/neo4j:/var/lib/neo4j/certificates:ro
+    ports:
+      - "7688:7687"
+      - "7475:7474"
+      - "7476:7473"
+
+  neo4j-core-3:
+    extends: neo4j-cluster
+    container_name: provenance-neo4j-core-3
+    volumes:
+      - neo4j-data-3:/data
+      - neo4j-logs-3:/logs
+      - neo4j-import:/var/lib/neo4j/import
+      - neo4j-plugins:/plugins
+      - ./certs/neo4j:/var/lib/neo4j/certificates:ro
+    ports:
+      - "7689:7687"
+      - "7477:7474"
+      - "7478:7473"
+
+  # Redis Cluster
+  redis-cluster:
+    image: redis:7-alpine
+    container_name: provenance-redis-master
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    command: redis-server /usr/local/etc/redis/redis.conf
+    environment:
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_password
+    volumes:
+      - redis-data:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    secrets:
+      - redis_password
+    networks:
+      - database
+      - monitoring
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # =============================================================================
+  # Storage Services
+  # =============================================================================
+  
+  minio-cluster:
+    image: minio/minio:latest
+    container_name: provenance-minio-1
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    environment:
+      - MINIO_ROOT_USER_FILE=/run/secrets/minio_access_key
+      - MINIO_ROOT_PASSWORD_FILE=/run/secrets/minio_secret_key
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_BROWSER_REDIRECT_URL=https://minio.${DOMAIN}
+      - MINIO_SERVER_URL=https://minio.${DOMAIN}
+      
+      # Security
+      - MINIO_TLS_CERT_PATH=/certs/public.crt
+      - MINIO_TLS_PRIVATE_KEY_PATH=/certs/private.key
+      
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+      - ./certs/minio:/certs:ro
+    secrets:
+      - minio_access_key
+      - minio_secret_key
+    networks:
+      - internal
+      - monitoring
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio-api.rule=Host(`minio.${DOMAIN}`)"
+      - "traefik.http.routers.minio-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.minio-api.loadbalancer.server.port=9000"
+      - "traefik.http.routers.minio-console.rule=Host(`minio-console.${DOMAIN}`)"
+      - "traefik.http.routers.minio-console.tls.certresolver=letsencrypt"
+      - "traefik.http.services.minio-console.loadbalancer.server.port=9001"
+
+  # =============================================================================
+  # Monitoring and Observability
+  # =============================================================================
+  
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: provenance-prometheus
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    volumes:
+      - ./config/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    networks:
+      - monitoring
+    ports:
+      - "9090:9090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.${DOMAIN}`)"
+      - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.prometheus.middlewares=auth"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: provenance-grafana
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD_FILE=/run/secrets/grafana_password
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel,neo4j-datasource
+      - GF_SERVER_DOMAIN=${DOMAIN}
+      - GF_SERVER_ROOT_URL=https://grafana.${DOMAIN}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana:/etc/grafana:ro
+      - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    secrets:
+      - grafana_password
+    networks:
+      - monitoring
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
+      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: provenance-jaeger
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=elasticsearch
+      - ES_SERVER_URLS=http://elasticsearch:9200
+    networks:
+      - monitoring
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
+      - "4318:4318"    # OTLP HTTP
+    depends_on:
+      - elasticsearch
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jaeger.rule=Host(`jaeger.${DOMAIN}`)"
+      - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.jaeger.middlewares=auth"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: provenance-elasticsearch
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms2g -Xmx2g
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - monitoring
+    ports:
+      - "9200:9200"
+
+  # =============================================================================
+  # Security Services
+  # =============================================================================
+  
+  # Fail2ban for brute force protection
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: provenance-fail2ban
+    restart: unless-stopped
+    network_mode: "host"
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./config/fail2ban:/data:rw
+      - ./logs:/var/log:ro
+    environment:
+      - F2B_LOG_LEVEL=INFO
+      - F2B_LOG_TARGET=/data/fail2ban.log
+
+# =============================================================================
+# Networks
+# =============================================================================
+
+networks:
+  web:
+    name: provenance-web
+    external: true
+  internal:
+    name: provenance-internal
+    driver: bridge
+    internal: true
+  database:
+    name: provenance-database
+    driver: bridge
+    internal: true
+  monitoring:
+    name: provenance-monitoring
+    driver: bridge
+
+# =============================================================================
+# Volumes
+# =============================================================================
+
+volumes:
+  # Application
+  app-logs:
+    name: provenance-app-logs
+  
+  # Databases
+  neo4j-data-1:
+    name: provenance-neo4j-data-1
+  neo4j-data-2:
+    name: provenance-neo4j-data-2
+  neo4j-data-3:
+    name: provenance-neo4j-data-3
+  neo4j-logs-1:
+    name: provenance-neo4j-logs-1
+  neo4j-logs-2:
+    name: provenance-neo4j-logs-2
+  neo4j-logs-3:
+    name: provenance-neo4j-logs-3
+  neo4j-import:
+    name: provenance-neo4j-import
+  neo4j-plugins:
+    name: provenance-neo4j-plugins
+  redis-data:
+    name: provenance-redis-data
+  
+  # Storage
+  minio-data:
+    name: provenance-minio-data
+  
+  # Monitoring
+  prometheus-data:
+    name: provenance-prometheus-data
+  grafana-data:
+    name: provenance-grafana-data
+  elasticsearch-data:
+    name: provenance-elasticsearch-data
+  
+  # Load balancer
+  traefik-acme:
+    name: provenance-traefik-acme
+
+# =============================================================================
+# Secrets
+# =============================================================================
+
+secrets:
+  neo4j_password:
+    file: ./secrets/neo4j_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  minio_access_key:
+    file: ./secrets/minio_access_key.txt
+  minio_secret_key:
+    file: ./secrets/minio_secret_key.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt
+
+# =============================================================================
+# Configuration
+# =============================================================================
+
+# Use this for production deployment:
+# 1. Create secrets files in ./secrets/
+# 2. Configure TLS certificates in ./certs/
+# 3. Set environment variables in .env file
+# 4. Create external web network: docker network create provenance-web
+# 5. Deploy: docker-compose -f docker-compose.production.yml up -d
