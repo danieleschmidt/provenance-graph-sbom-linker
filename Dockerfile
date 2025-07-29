@@ -201,7 +201,7 @@ ENTRYPOINT ["/provenance-linker"]
 
 # =============================================================================
 # Documentation stage
-FROM node:18-alpine AS docs
+FROM node:24-alpine AS docs
 
 # Set working directory
 WORKDIR /docs
