@@ -391,3 +391,83 @@ archives/
 local/
 scripts/local/
 dev-env/
+
+# =============================================================================
+# Security and Compliance Specific
+# =============================================================================
+
+# SBOM files (unless specifically tracked)
+*.sbom.json
+*.cyclonedx.json
+*.spdx.json
+sbom-cache/
+vulnerability-reports/
+
+# Provenance and attestation data
+*.att
+*.attestation
+*.provenance
+provenance-cache/
+attestation-cache/
+
+# Signing keys and certificates (ensure these are never committed)
+*.key
+*.priv
+*.private
+*.secret
+*.p8
+*.p12
+*.pfx
+*.keystore
+*.jks
+cosign.key
+cosign.pub
+signing-keys/
+certificates/
+
+# Secrets detection baselines
+.secrets.baseline
+.gitleaks.toml
+
+# Security scan results
+*.sarif
+security-reports/
+vulnerability-scans/
+gosec-results/
+trivy-results/
+anchore-results/
+
+# Compliance reports
+compliance-reports/
+audit-logs/
+nist-ssdf-reports/
+eu-cra-reports/
+
+# Runtime security data
+runtime-attestations/
+runtime-signatures/
+deployment-attestations/
+
+# Container scanning results
+container-scan-results/
+image-scan-cache/
+
+# Dependency analysis
+dependency-reports/
+license-reports/
+dependency-cache/
+
+# ML/AI model artifacts (if used)
+*.model
+*.pkl
+*.h5
+*.onnx
+model-artifacts/
+training-data/
+model-registry/
+
+# Observability and monitoring temp files
+metrics-temp/
+traces-temp/
+logs-temp/
+observability-cache/

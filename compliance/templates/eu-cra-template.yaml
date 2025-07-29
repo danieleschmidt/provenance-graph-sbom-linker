@@ -1,0 +1,316 @@
+# EU Cyber Resilience Act (CRA) Compliance Template
+# =============================================================================
+# Template for generating EU CRA compliance documentation
+# Reference: EU Regulation 2024/2847 (Cyber Resilience Act)
+
+metadata:
+  regulation: "EU Cyber Resilience Act (CRA)"
+  regulation_reference: "Regulation (EU) 2024/2847"
+  manufacturer: "${MANUFACTURER_NAME}"
+  product_name: "${PRODUCT_NAME}"
+  product_version: "${PRODUCT_VERSION}"
+  product_category: "${PRODUCT_CATEGORY}" # Class I or Class II or Important
+  ce_marking_required: "${CE_MARKING_REQUIRED}"
+  assessment_date: "${ASSESSMENT_DATE}"
+  responsible_person: "${RESPONSIBLE_PERSON}"
+  contact_email: "${CONTACT_EMAIL}"
+
+# =============================================================================
+# Article 10: Essential Requirements
+# =============================================================================
+essential_requirements:
+  # Security by design and by default
+  article_10_1:
+    requirement: "Products must be designed, developed and produced to ensure cybersecurity"
+    implementation:
+      security_by_design:
+        status: "${SECURITY_BY_DESIGN_STATUS}"
+        evidence:
+          - "Threat modeling conducted: ${THREAT_MODEL_COMPLETED}"
+          - "Security architecture documented: ${SECURITY_ARCH_DOC}"
+          - "Zero-trust principles applied: ${ZERO_TRUST_IMPLEMENTED}"
+        artifacts:
+          - "docs/ARCHITECTURE.md"
+          - "security/threat-models/"
+          - "security/security-architecture.md"
+      
+      security_by_default:
+        status: "${SECURITY_BY_DEFAULT_STATUS}"
+        evidence:
+          - "Secure default configurations: ${SECURE_DEFAULTS}"
+          - "Least privilege principle enforced: ${LEAST_PRIVILEGE}"
+          - "Attack surface minimized: ${ATTACK_SURFACE_MINIMIZED}"
+        artifacts:
+          - "configs/security-defaults.yaml"
+          - "docs/security-configuration.md"
+
+  # Vulnerability handling
+  article_10_2:
+    requirement: "Products must be delivered without known exploitable vulnerabilities"
+    implementation:
+      vulnerability_assessment:
+        status: "${VULN_ASSESSMENT_STATUS}"
+        evidence:
+          - "Vulnerability scanning automated: ${VULN_SCANNING_AUTOMATED}"
+          - "Known vulnerabilities tracked: ${VULN_TRACKING_SYSTEM}"
+          - "Risk assessment completed: ${RISK_ASSESSMENT_COMPLETED}"
+        artifacts:
+          - "security/vulnerability-reports/"
+          - "security/risk-assessments/"
+      
+      vulnerability_disclosure:
+        status: "${VULN_DISCLOSURE_STATUS}"
+        evidence:
+          - "Coordinated vulnerability disclosure process: ${CVD_PROCESS}"
+          - "Security contact information published: ${SECURITY_CONTACT}"
+          - "Vulnerability reporting mechanism: ${VULN_REPORTING}"
+        artifacts:
+          - "SECURITY.md"
+          - "security/vulnerability-disclosure-policy.md"
+
+  # Software bill of materials
+  article_10_3:
+    requirement: "SBOM must be provided for products with digital elements"
+    implementation:
+      sbom_generation:
+        status: "${SBOM_GENERATION_STATUS}"
+        evidence:
+          - "SBOM automatically generated: ${SBOM_AUTO_GENERATED}"
+          - "SBOM format compliance: ${SBOM_FORMAT_COMPLIANCE}"
+          - "SBOM accuracy verified: ${SBOM_ACCURACY_VERIFIED}"
+        artifacts:
+          - "sbom.cyclonedx.json"
+          - "sbom.spdx.json"
+          - "scripts/generate-sbom.sh"
+      
+      sbom_maintenance:
+        status: "${SBOM_MAINTENANCE_STATUS}"
+        evidence:
+          - "SBOM updated with each release: ${SBOM_UPDATED_RELEASES}"
+          - "Dependency changes tracked: ${DEPENDENCY_TRACKING}"
+          - "SBOM validation automated: ${SBOM_VALIDATION}"
+        artifacts:
+          - "workflows/sbom-generation.yml"
+          - "scripts/validate-sbom.sh"
+
+# =============================================================================
+# Article 11: Risk Assessment
+# =============================================================================
+risk_assessment:
+  cybersecurity_risks:
+    identification:
+      status: "${RISK_IDENTIFICATION_STATUS}"
+      evidence:
+        - "Risk register maintained: ${RISK_REGISTER_MAINTAINED}"
+        - "Threat landscape analysis: ${THREAT_LANDSCAPE_ANALYSIS}"
+        - "Asset inventory completed: ${ASSET_INVENTORY}"
+      artifacts:
+        - "security/risk-register.yaml"
+        - "security/threat-landscape.md"
+        - "security/asset-inventory.json"
+    
+    assessment:
+      status: "${RISK_ASSESSMENT_STATUS}"
+      evidence:
+        - "Risk assessment methodology: ${RISK_METHODOLOGY}"
+        - "Risk scoring system: ${RISK_SCORING_SYSTEM}"
+        - "Residual risk evaluation: ${RESIDUAL_RISK_EVAL}"
+      artifacts:
+        - "security/risk-assessment-methodology.md"
+        - "security/risk-matrix.yaml"
+    
+    mitigation:
+      status: "${RISK_MITIGATION_STATUS}"
+      evidence:
+        - "Risk mitigation strategies: ${RISK_MITIGATION_STRATEGIES}"
+        - "Control effectiveness testing: ${CONTROL_TESTING}"
+        - "Risk monitoring procedures: ${RISK_MONITORING}"
+      artifacts:
+        - "security/risk-mitigation-plan.md"
+        - "security/control-testing-results.json"
+
+# =============================================================================
+# Article 13: Conformity Assessment
+# =============================================================================
+conformity_assessment:
+  internal_control:
+    status: "${INTERNAL_CONTROL_STATUS}"
+    evidence:
+      - "Quality management system: ${QMS_IMPLEMENTED}"
+      - "Technical documentation: ${TECH_DOC_COMPLETE}"
+      - "EU declaration of conformity: ${EU_DOC_PREPARED}"
+    artifacts:
+      - "compliance/quality-management-system.md"
+      - "compliance/technical-documentation/"
+      - "compliance/eu-declaration-of-conformity.pdf"
+  
+  third_party_assessment:
+    required: "${THIRD_PARTY_REQUIRED}"
+    status: "${THIRD_PARTY_STATUS}"
+    notified_body: "${NOTIFIED_BODY}"
+    certificate_number: "${CERTIFICATE_NUMBER}"
+    artifacts:
+      - "compliance/third-party-assessment-report.pdf"
+      - "compliance/conformity-certificate.pdf"
+
+# =============================================================================
+# Article 15: Technical Documentation
+# =============================================================================
+technical_documentation:
+  general_description:
+    status: "${GENERAL_DESC_STATUS}"
+    artifacts:
+      - "docs/product-description.md"
+      - "docs/intended-use.md"
+      - "docs/system-overview.md"
+  
+  design_specifications:
+    status: "${DESIGN_SPEC_STATUS}"
+    artifacts:
+      - "docs/ARCHITECTURE.md"
+      - "docs/design-specifications.md"
+      - "docs/interface-specifications.md"
+  
+  risk_analysis:
+    status: "${RISK_ANALYSIS_STATUS}"
+    artifacts:
+      - "security/risk-analysis-report.pdf"
+      - "security/cybersecurity-risk-assessment.md"
+  
+  security_measures:
+    status: "${SECURITY_MEASURES_STATUS}"
+    artifacts:
+      - "security/security-controls.md"
+      - "security/cryptographic-implementation.md"
+      - "security/access-control-mechanisms.md"
+  
+  test_reports:
+    status: "${TEST_REPORTS_STATUS}"
+    artifacts:
+      - "test/security-test-reports/"
+      - "test/penetration-test-results.pdf"
+      - "test/vulnerability-assessment-report.pdf"
+
+# =============================================================================
+# Article 20: Incident Reporting
+# =============================================================================
+incident_reporting:
+  reporting_mechanism:
+    status: "${INCIDENT_REPORTING_STATUS}"
+    evidence:
+      - "Incident reporting process: ${INCIDENT_PROCESS}"
+      - "ENISA reporting capability: ${ENISA_REPORTING}"
+      - "24-hour reporting SLA: ${REPORTING_SLA}"
+    artifacts:
+      - "security/incident-response-plan.md"
+      - "security/incident-reporting-procedure.md"
+  
+  incident_classification:
+    status: "${INCIDENT_CLASSIFICATION_STATUS}"
+    evidence:
+      - "Severity classification system: ${SEVERITY_CLASSIFICATION}"
+      - "Impact assessment criteria: ${IMPACT_CRITERIA}"
+      - "Escalation procedures: ${ESCALATION_PROCEDURES}"
+    artifacts:
+      - "security/incident-classification.yaml"
+      - "security/escalation-matrix.md"
+
+# =============================================================================
+# Article 21: Information and Instructions
+# =============================================================================
+user_information:
+  security_information:
+    status: "${USER_INFO_STATUS}"
+    evidence:
+      - "User security guide provided: ${USER_SECURITY_GUIDE}"
+      - "Security configuration instructions: ${CONFIG_INSTRUCTIONS}"
+      - "Best practices documentation: ${BEST_PRACTICES_DOC}"
+    artifacts:
+      - "docs/user-security-guide.md"
+      - "docs/security-configuration.md"
+      - "docs/security-best-practices.md"
+  
+  vulnerability_information:
+    status: "${VULN_INFO_STATUS}"
+    evidence:
+      - "Vulnerability disclosure policy: ${VULN_DISCLOSURE_POLICY}"
+      - "Security advisory process: ${SECURITY_ADVISORY_PROCESS}"
+      - "Update notification mechanism: ${UPDATE_NOTIFICATION}"
+    artifacts:
+      - "SECURITY.md"
+      - "security/advisory-process.md"
+
+# =============================================================================
+# Article 23: Support Measures
+# =============================================================================
+support_measures:
+  security_updates:
+    status: "${SECURITY_UPDATES_STATUS}"
+    evidence:
+      - "Automated update mechanism: ${AUTO_UPDATE_MECHANISM}"
+      - "Security patch SLA: ${PATCH_SLA}"
+      - "End-of-support policy: ${EOS_POLICY}"
+    artifacts:
+      - "docs/update-policy.md"
+      - "docs/end-of-support-policy.md"
+  
+  support_period:
+    duration: "${SUPPORT_DURATION}"
+    justification: "${SUPPORT_JUSTIFICATION}"
+    end_date: "${SUPPORT_END_DATE}"
+    artifacts:
+      - "docs/product-lifecycle.md"
+      - "compliance/support-commitment.md"
+
+# =============================================================================
+# Market Surveillance and Compliance
+# =============================================================================
+market_surveillance:
+  authorized_representative:
+    required: "${AUTH_REP_REQUIRED}"
+    name: "${AUTH_REP_NAME}"
+    address: "${AUTH_REP_ADDRESS}"
+    contact: "${AUTH_REP_CONTACT}"
+  
+  product_database_registration:
+    status: "${PRODUCT_DB_STATUS}"
+    registration_number: "${REGISTRATION_NUMBER}"
+    registration_date: "${REGISTRATION_DATE}"
+
+# =============================================================================
+# CE Marking and Declaration
+# =============================================================================
+ce_marking:
+  required: "${CE_MARKING_REQUIRED}"
+  applied: "${CE_MARKING_APPLIED}"
+  declaration_of_conformity:
+    status: "${DOC_STATUS}"
+    number: "${DOC_NUMBER}"
+    date: "${DOC_DATE}"
+    artifacts:
+      - "compliance/eu-declaration-of-conformity.pdf"
+      - "compliance/ce-marking-documentation.pdf"
+
+# =============================================================================
+# Compliance Status Summary
+# =============================================================================
+compliance_summary:
+  overall_status: "${OVERALL_COMPLIANCE_STATUS}"
+  compliance_percentage: "${COMPLIANCE_PERCENTAGE}%"
+  critical_gaps:
+    - "${CRITICAL_GAP_1}"
+    - "${CRITICAL_GAP_2}"
+  recommended_actions:
+    immediate:
+      - "${IMMEDIATE_ACTION_1}"
+      - "${IMMEDIATE_ACTION_2}"
+    short_term:
+      - "${SHORT_TERM_ACTION_1}"
+      - "${SHORT_TERM_ACTION_2}"
+    long_term:
+      - "${LONG_TERM_ACTION_1}"
+
+validity:
+  assessment_valid_until: "${ASSESSMENT_VALID_UNTIL}"
+  next_review_date: "${NEXT_REVIEW_DATE}"
+  certificate_expiry: "${CERTIFICATE_EXPIRY}"

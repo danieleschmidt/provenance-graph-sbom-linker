@@ -79,3 +79,30 @@ indent_size = 2
 # License and legal files
 [{LICENSE*,COPYING*,COPYRIGHT*}]
 trim_trailing_whitespace = false
+
+# SBOM and security files
+[*.{cyclonedx,spdx}.json]
+indent_size = 2
+max_line_length = 200
+
+# Provenance attestation files
+[*.{att,attestation}.json]
+indent_size = 2
+max_line_length = 200
+
+# Generated files (do not format)
+[*.{generated,gen}.{go,js,ts,py}]
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
+
+# Binary and encoded files
+[*.{bin,dat,key,cert,pem,p12,keystore}]
+insert_final_newline = false
+trim_trailing_whitespace = false
+
+# Helm chart files
+[charts/**/*.{yaml,yml}]
+indent_size = 2
+max_line_length = 120

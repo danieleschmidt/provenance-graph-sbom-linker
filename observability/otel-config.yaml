@@ -1,0 +1,245 @@
+# OpenTelemetry Configuration for Provenance Graph SBOM Linker
+# =============================================================================
+# Comprehensive observability configuration for metrics, traces, and logs
+
+# Service configuration
+service:
+  name: provenance-graph-sbom-linker
+  version: ${VERSION:-dev}
+  namespace: ${NAMESPACE:-default}
+  environment: ${ENVIRONMENT:-development}
+
+# Receivers - Data collection endpoints
+receivers:
+  # OTLP receiver for traces and metrics
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+        cors:
+          allowed_origins:
+            - "*"
+
+  # Prometheus receiver for scraping metrics
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'provenance-linker'
+          static_configs:
+            - targets: ['localhost:8080']
+          scrape_interval: 15s
+          metrics_path: /metrics
+        
+        - job_name: 'neo4j'
+          static_configs:
+            - targets: ['neo4j:7474']
+          scrape_interval: 30s
+          metrics_path: /metrics
+        
+        - job_name: 'redis'
+          static_configs:
+            - targets: ['redis:6379']
+          scrape_interval: 30s
+
+  # File log receiver
+  filelog:
+    include:
+      - /var/log/provenance-linker/*.log
+      - /var/log/containers/provenance-*.log
+    operators:
+      - type: json_parser
+        timestamp:
+          parse_from: attributes.timestamp
+          layout: '%Y-%m-%dT%H:%M:%S.%fZ'
+
+  # Host metrics for infrastructure monitoring
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      disk:
+      filesystem:
+      network:
+      process:
+
+# Processors - Data transformation and batching
+processors:
+  # Batch processor for better performance
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Memory limiter to prevent OOM
+  memory_limiter:
+    limit_mib: 512
+    spike_limit_mib: 128
+    check_interval: 5s
+
+  # Resource processor to add service info
+  resource:
+    attributes:
+      - key: service.name
+        value: provenance-graph-sbom-linker
+        action: upsert
+      - key: service.version
+        from_attribute: version
+        action: insert
+      - key: deployment.environment
+        from_attribute: environment
+        action: insert
+      - key: k8s.cluster.name
+        from_attribute: k8s_cluster_name
+        action: insert
+
+  # Attributes processor for data enrichment
+  attributes:
+    actions:
+      - key: provenance.component
+        action: insert
+        value: sbom-linker
+      - key: security.scan_type
+        from_attribute: scan_type
+        action: insert
+
+  # Sampling processor for trace volume control
+  probabilistic_sampler:
+    sampling_percentage: 10
+
+# Exporters - Data output destinations
+exporters:
+  # Prometheus exporter for metrics
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: provenance
+    send_timestamps: true
+    metric_expiration: 180m
+    enable_open_metrics: true
+
+  # OTLP exporter for traces to Jaeger
+  otlp/jaeger:
+    endpoint: ${JAEGER_ENDPOINT:-http://jaeger:14250}
+    tls:
+      insecure: true
+    headers:
+      api-key: ${JAEGER_API_KEY:-}
+
+  # OTLP exporter for metrics to monitoring backend
+  otlp/metrics:
+    endpoint: ${METRICS_ENDPOINT:-http://lang-observatory:4317}
+    tls:
+      insecure: true
+    headers:
+      authorization: Bearer ${METRICS_TOKEN:-}
+
+  # Logging exporter for development
+  logging:
+    loglevel: debug
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+  # File exporter for logs
+  file:
+    path: /var/log/otel/traces.jsonl
+    rotation:
+      max_megabytes: 100
+      max_days: 7
+      max_backups: 3
+
+  # Elasticsearch exporter for log aggregation
+  elasticsearch:
+    endpoints:
+      - ${ELASTICSEARCH_ENDPOINT:-http://elasticsearch:9200}
+    index: provenance-logs
+    pipeline: provenance-pipeline
+    http:
+      timeout: 30s
+    auth:
+      authenticator: basicauth
+      username: ${ELASTICSEARCH_USERNAME:-elastic}
+      password: ${ELASTICSEARCH_PASSWORD:-}
+
+# Extensions - Additional functionality
+extensions:
+  # Health check extension
+  health_check:
+    endpoint: 0.0.0.0:13133
+    path: /health
+
+  # pprof extension for performance profiling
+  pprof:
+    endpoint: 0.0.0.0:1777
+
+  # zpages extension for debugging
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+  # File storage for persistent queues
+  file_storage:
+    directory: /var/lib/otel/storage
+    timeout: 1s
+
+# Service pipelines - Data flow configuration
+service:
+  extensions: [health_check, pprof, zpages, file_storage]
+  
+  pipelines:
+    # Traces pipeline
+    traces:
+      receivers: [otlp, jaeger]
+      processors: [memory_limiter, resource, attributes, probabilistic_sampler, batch]
+      exporters: [otlp/jaeger, logging]
+    
+    # Metrics pipeline
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [prometheus, otlp/metrics, logging]
+    
+    # Logs pipeline
+    logs:
+      receivers: [otlp, filelog]
+      processors: [memory_limiter, resource, attributes, batch]
+      exporters: [elasticsearch, logging]
+
+  # Telemetry configuration
+  telemetry:
+    logs:
+      level: info
+      encoding: json
+      output_paths:
+        - /var/log/otel/otel-collector.log
+        - stdout
+    metrics:
+      level: detailed
+      address: 0.0.0.0:8888
+    traces:
+      processors:
+        - batch
+
+# Environment-specific overrides
+config_sources:
+  env:
+    defaults:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://lang-observatory:4317
+      OTEL_RESOURCE_ATTRIBUTES: service.name=provenance-linker,service.version=${VERSION}
+      OTEL_LOG_LEVEL: info
+
+connectors:
+  # Span metrics connector
+  spanmetrics:
+    histogram_buckets: [2ms, 8ms, 50ms, 100ms, 200ms, 500ms, 1s, 2s, 5s, 10s]
+    dimensions:
+      - name: http.method
+      - name: http.status_code
+      - name: provenance.operation
+      - name: sbom.format
