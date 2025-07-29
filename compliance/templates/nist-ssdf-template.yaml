@@ -1,0 +1,355 @@
+# NIST SSDF (Secure Software Development Framework) Compliance Template
+# =============================================================================
+# Template for generating NIST SSDF compliance reports
+# Reference: https://csrc.nist.gov/Projects/ssdf
+
+metadata:
+  framework: "NIST SSDF v1.1"
+  organization: "${ORGANIZATION_NAME}"
+  product: "${PRODUCT_NAME}"
+  version: "${PRODUCT_VERSION}"
+  assessment_date: "${ASSESSMENT_DATE}"
+  assessor: "${ASSESSOR_NAME}"
+  
+compliance_practices:
+  # =============================================================================
+  # PO: Prepare the Organization
+  # =============================================================================
+  PO.1:
+    name: "Define Security Requirements for Software Development"
+    subcategories:
+      PO.1.1:
+        description: "Identify and document all security requirements"
+        implementation_status: "${PO_1_1_STATUS}"
+        evidence:
+          - "Security requirements documented in ${REQUIREMENTS_DOC}"
+          - "Threat model available at ${THREAT_MODEL_LOCATION}"
+        artifacts:
+          - "requirements/security-requirements.md"
+          - "docs/threat-model.md"
+        automation_level: "${PO_1_1_AUTOMATION}"
+        
+      PO.1.2:
+        description: "Communicate security requirements to developers"
+        implementation_status: "${PO_1_2_STATUS}"
+        evidence:
+          - "Security training completed by ${TRAINING_COMPLETION_RATE}% of developers"
+          - "Security requirements integrated into development workflow"
+        artifacts:
+          - "training/security-training-records.json"
+          - "docs/developer-security-guide.md"
+        automation_level: "${PO_1_2_AUTOMATION}"
+        
+      PO.1.3:
+        description: "Ensure security requirements flow down to suppliers"
+        implementation_status: "${PO_1_3_STATUS}"
+        evidence:
+          - "Supplier agreements include security requirements"
+          - "Third-party component security assessments"
+        artifacts:
+          - "compliance/supplier-agreements/"
+          - "security/third-party-assessments/"
+        automation_level: "${PO_1_3_AUTOMATION}"
+
+  PO.2:
+    name: "Implement Roles and Responsibilities"
+    subcategories:
+      PO.2.1:
+        description: "Establish secure development roles and responsibilities"
+        implementation_status: "${PO_2_1_STATUS}"
+        evidence:
+          - "RACI matrix for security responsibilities"
+          - "Role-based access controls implemented"
+        artifacts:
+          - "docs/security-roles-responsibilities.md"
+          - "configs/rbac-policies.yaml"
+        automation_level: "${PO_2_1_AUTOMATION}"
+        
+      PO.2.2:
+        description: "Assign responsibility for security compliance"
+        implementation_status: "${PO_2_2_STATUS}"
+        evidence:
+          - "Security champion program established"
+          - "Compliance officer assigned"
+        artifacts:
+          - "compliance/security-champions.json"
+          - "compliance/compliance-assignments.md"
+        automation_level: "${PO_2_2_AUTOMATION}"
+
+  PO.3:
+    name: "Implement Supporting Toolchains"
+    subcategories:
+      PO.3.1:
+        description: "Use automated tools for security testing"
+        implementation_status: "${PO_3_1_STATUS}"
+        evidence:
+          - "SAST tools integrated: ${SAST_TOOLS}"
+          - "DAST tools integrated: ${DAST_TOOLS}"
+          - "SCA tools integrated: ${SCA_TOOLS}"
+        artifacts:
+          - "workflows/security.yml"
+          - "configs/security-scanning.yaml"
+        automation_level: "Fully Automated"
+        
+      PO.3.2:
+        description: "Use automated tools for provenance generation"
+        implementation_status: "${PO_3_2_STATUS}"
+        evidence:
+          - "SBOM generation automated in CI/CD"
+          - "Provenance attestations created for all builds"
+          - "Supply chain metadata captured"
+        artifacts:
+          - "workflows/ci.yml"
+          - "scripts/generate-sbom.sh"
+          - "configs/provenance-config.yaml"
+        automation_level: "Fully Automated"
+
+  # =============================================================================
+  # PS: Protect the Software
+  # =============================================================================
+  PS.1:
+    name: "Protect All Forms of Code from Unauthorized Access"
+    subcategories:
+      PS.1.1:
+        description: "Store code in version control with access controls"
+        implementation_status: "${PS_1_1_STATUS}"
+        evidence:
+          - "All code stored in Git with branch protection"
+          - "Access controls enforced via ${VCS_PLATFORM}"
+          - "Audit logs maintained for ${AUDIT_RETENTION_DAYS} days"
+        artifacts:
+          - ".github/branch-protection.json"
+          - "configs/access-control.yaml"
+        automation_level: "${PS_1_1_AUTOMATION}"
+
+  PS.2:
+    name: "Provide Standardized Development Tools"
+    subcategories:
+      PS.2.1:
+        description: "Standardize development environment"
+        implementation_status: "${PS_2_1_STATUS}"
+        evidence:
+          - "Container-based development environment"
+          - "IDE configurations standardized"
+          - "Pre-commit hooks enforce standards"
+        artifacts:
+          - "Dockerfile.dev"
+          - ".vscode/settings.json"
+          - ".pre-commit-config.yaml"
+        automation_level: "${PS_2_1_AUTOMATION}"
+
+  # =============================================================================
+  # PW: Produce Well-Secured Software
+  # =============================================================================
+  PW.1:
+    name: "Design Software to Meet Security Requirements"
+    subcategories:
+      PW.1.1:
+        description: "Use secure design principles"
+        implementation_status: "${PW_1_1_STATUS}"
+        evidence:
+          - "Threat modeling completed for all components"
+          - "Security architecture documented"
+          - "Zero-trust principles implemented"
+        artifacts:
+          - "docs/ARCHITECTURE.md"
+          - "security/threat-models/"
+        automation_level: "${PW_1_1_AUTOMATION}"
+
+  PW.2:
+    name: "Review the Software Design"
+    subcategories:
+      PW.2.1:
+        description: "Conduct security-focused design reviews"
+        implementation_status: "${PW_2_1_STATUS}"
+        evidence:
+          - "Security review required for all design changes"
+          - "Architecture Decision Records include security considerations"
+        artifacts:
+          - "docs/adr/"
+          - "reviews/security-design-reviews.md"
+        automation_level: "${PW_2_1_AUTOMATION}"
+
+  PW.4:
+    name: "Reuse Existing Software When Possible"
+    subcategories:
+      PW.4.1:
+        description: "Acquire well-secured software components"
+        implementation_status: "${PW_4_1_STATUS}"
+        evidence:
+          - "Dependency scanning automated"
+          - "License compliance verified"
+          - "Known vulnerabilities tracked"
+        artifacts:
+          - "go.mod"
+          - "package.json"
+          - "sbom.cyclonedx.json"
+        automation_level: "Fully Automated"
+
+  PW.5:
+    name: "Create Source Code by Following Secure Coding Practices"
+    subcategories:
+      PW.5.1:
+        description: "Follow secure coding standards"
+        implementation_status: "${PW_5_1_STATUS}"
+        evidence:
+          - "Coding standards documented and enforced"
+          - "Linting rules include security checks"
+          - "Code reviews mandatory"
+        artifacts:
+          - "docs/coding-standards.md"
+          - ".golangci.yml"
+          - ".github/CODEOWNERS"
+        automation_level: "${PW_5_1_AUTOMATION}"
+
+  PW.6:
+    name: "Configure Software to Have Secure Settings by Default"
+    subcategories:
+      PW.6.1:
+        description: "Use secure-by-default configurations"
+        implementation_status: "${PW_6_1_STATUS}"
+        evidence:
+          - "Security hardening applied to all deployments"
+          - "Configuration templates follow security best practices"
+        artifacts:
+          - "configs/security-defaults.yaml"
+          - "deploy/security-policies.yaml"
+        automation_level: "${PW_6_1_AUTOMATION}"
+
+  # =============================================================================
+  # PW.7-9: Testing and Analysis
+  # =============================================================================
+  PW.7:
+    name: "Review and/or Analyze Human-Readable Code"
+    subcategories:
+      PW.7.1:
+        description: "Perform code reviews with security focus"
+        implementation_status: "${PW_7_1_STATUS}"
+        evidence:
+          - "All code changes require review"
+          - "Security-focused review checklist used"
+          - "Static analysis integrated into reviews"
+        artifacts:
+          - ".github/pull_request_template.md"
+          - "docs/code-review-checklist.md"
+        automation_level: "${PW_7_1_AUTOMATION}"
+
+  PW.8:
+    name: "Test Executable Code"
+    subcategories:
+      PW.8.1:
+        description: "Perform comprehensive security testing"
+        implementation_status: "${PW_8_1_STATUS}"
+        evidence:
+          - "Unit tests include security test cases"
+          - "Integration tests verify security controls"
+          - "Security regression tests automated"
+        artifacts:
+          - "test/unit/"
+          - "test/integration/"
+          - "test/security/"
+        automation_level: "${PW_8_1_AUTOMATION}"
+        
+      PW.8.2:
+        description: "Perform dynamic application security testing"
+        implementation_status: "${PW_8_2_STATUS}"
+        evidence:
+          - "DAST tools integrated in CI/CD"
+          - "API security testing automated"
+          - "Container image scanning performed"
+        artifacts:
+          - "workflows/security.yml"
+          - "configs/dast-config.yaml"
+        automation_level: "Fully Automated"
+
+  PW.9:
+    name: "Configure and Use Automated Toolchains"
+    subcategories:
+      PW.9.1:
+        description: "Deploy software securely"
+        implementation_status: "${PW_9_1_STATUS}"
+        evidence:
+          - "Infrastructure as Code used for deployments"
+          - "Security policies enforced in deployment pipeline"
+          - "Deployment signatures verified"
+        artifacts:
+          - "deploy/"
+          - "charts/"
+          - "policies/"
+        automation_level: "${PW_9_1_AUTOMATION}"
+
+  # =============================================================================
+  # RV: Respond to Vulnerabilities
+  # =============================================================================
+  RV.1:
+    name: "Identify and Confirm Vulnerabilities"
+    subcategories:
+      RV.1.1:
+        description: "Monitor for vulnerabilities in software components"
+        implementation_status: "${RV_1_1_STATUS}"
+        evidence:
+          - "Vulnerability monitoring automated"
+          - "Security advisories tracked"
+          - "Dependency updates automated where possible"
+        artifacts:
+          - "workflows/dependency-update.yml"
+          - "configs/vulnerability-monitoring.yaml"
+        automation_level: "Fully Automated"
+
+  RV.2:
+    name: "Assess, Prioritize, and Remediate Vulnerabilities"
+    subcategories:
+      RV.2.1:
+        description: "Analyze and prioritize vulnerabilities"
+        implementation_status: "${RV_2_1_STATUS}"
+        evidence:
+          - "Risk-based vulnerability prioritization"
+          - "SLA defined for vulnerability remediation"
+          - "Patch management process documented"
+        artifacts:
+          - "docs/vulnerability-management.md"
+          - "policies/patch-management.yaml"
+        automation_level: "${RV_2_1_AUTOMATION}"
+
+  RV.3:
+    name: "Analyze Vulnerabilities to Identify Their Root Causes"
+    subcategories:
+      RV.3.1:
+        description: "Perform root cause analysis"
+        implementation_status: "${RV_3_1_STATUS}"
+        evidence:
+          - "Post-incident reviews conducted"
+          - "Root cause analysis documented"
+          - "Process improvements implemented"
+        artifacts:
+          - "incident-reports/"
+          - "docs/lessons-learned.md"
+        automation_level: "${RV_3_1_AUTOMATION}"
+
+# =============================================================================
+# Scoring and Assessment
+# =============================================================================
+scoring:
+  total_practices: 23
+  implemented_practices: "${IMPLEMENTED_COUNT}"
+  partially_implemented: "${PARTIAL_COUNT}"
+  not_implemented: "${NOT_IMPLEMENTED_COUNT}"
+  overall_score: "${OVERALL_SCORE}%"
+  
+maturity_levels:
+  level_1_basic: "${LEVEL_1_SCORE}%"
+  level_2_intermediate: "${LEVEL_2_SCORE}%"
+  level_3_advanced: "${LEVEL_3_SCORE}%"
+
+recommendations:
+  high_priority:
+    - "${HIGH_PRIORITY_REC_1}"
+    - "${HIGH_PRIORITY_REC_2}"
+  medium_priority:
+    - "${MEDIUM_PRIORITY_REC_1}"
+    - "${MEDIUM_PRIORITY_REC_2}"
+  low_priority:
+    - "${LOW_PRIORITY_REC_1}"
+
+next_assessment: "${NEXT_ASSESSMENT_DATE}"
+valid_until: "${EXPIRATION_DATE}"

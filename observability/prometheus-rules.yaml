@@ -1,0 +1,260 @@
+# Prometheus Alerting Rules for Provenance Graph SBOM Linker
+# =============================================================================
+# Comprehensive alerting for supply chain security monitoring
+
+groups:
+  # =============================================================================
+  # Supply Chain Security Alerts
+  # =============================================================================
+  - name: supply_chain_security
+    rules:
+      - alert: UnsignedArtifactInProduction
+        expr: increase(provenance_artifacts_total{signed="false",environment="production"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: provenance
+          team: security
+        annotations:
+          summary: "Unsigned artifact detected in production"
+          description: "An unsigned artifact has been deployed to production environment. Artifact: {{ $labels.artifact_name }}"
+
+      - alert: SignatureVerificationFailure
+        expr: rate(provenance_verifications_total{result="failure"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: signature_verification
+          team: security
+        annotations:
+          summary: "High signature verification failure rate"
+          description: "Signature verification failure rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: HighSeverityVulnerabilityDetected
+        expr: increase(provenance_sbom_vulnerabilities{severity="critical"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: vulnerability_scanner
+          team: security
+        annotations:
+          summary: "Critical vulnerability detected in SBOM"
+          description: "Critical vulnerability found: {{ $labels.cve_id }} in component {{ $labels.component }}"
+
+      - alert: ComplianceScoreBelowThreshold
+        expr: provenance_compliance_score < 80
+        for: 5m
+        labels:
+          severity: warning
+          component: compliance
+          team: governance
+        annotations:
+          summary: "Compliance score below threshold"
+          description: "{{ $labels.standard }} compliance score is {{ $value }}%, below 80% threshold"
+
+      - alert: ProvenanceChainBroken
+        expr: increase(provenance_chain_breaks_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: provenance_graph
+          team: security
+        annotations:
+          summary: "Provenance chain integrity compromised"
+          description: "Provenance chain break detected for artifact {{ $labels.artifact_name }}"
+
+      - alert: SuspiciousDependencyAdded
+        expr: increase(provenance_suspicious_dependencies_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: dependency_analysis
+          team: security
+        annotations:
+          summary: "Suspicious dependency detected"
+          description: "Suspicious dependency {{ $labels.dependency }} added to {{ $labels.project }}"
+
+  # =============================================================================
+  # System Performance Alerts
+  # =============================================================================
+  - name: system_performance
+    rules:
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+          team: platform
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile latency is {{ $value }}s over the last 5 minutes"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          component: api
+          team: platform
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes"
+
+      - alert: SBOMProcessingBacklog
+        expr: sbom_processing_queue_size > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: sbom_processor
+          team: platform
+        annotations:
+          summary: "SBOM processing backlog growing"
+          description: "SBOM processing queue has {{ $value }} items pending for over 10 minutes"
+
+      - alert: GraphDatabaseConnectionFailure
+        expr: up{job="neo4j"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+          team: platform
+        annotations:
+          summary: "Neo4j database connection failed"
+          description: "Cannot connect to Neo4j database for provenance graph storage"
+
+  # =============================================================================
+  # Infrastructure Alerts
+  # =============================================================================
+  - name: infrastructure
+    rules:
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          team: platform
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value }}% on instance {{ $labels.instance }}"
+
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+          team: platform
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value }}% on instance {{ $labels.instance }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          component: infrastructure
+          team: platform
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value }}% on instance {{ $labels.instance }}, mount {{ $labels.mountpoint }}"
+
+  # =============================================================================
+  # Business Logic Alerts
+  # =============================================================================
+  - name: business_logic
+    rules:
+      - alert: ArtifactProcessingStalled
+        expr: rate(provenance_artifacts_total[10m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+          component: artifact_processor
+          team: platform
+        annotations:
+          summary: "Artifact processing has stalled"
+          description: "No artifacts have been processed for 15 minutes"
+
+      - alert: LicenseViolationDetected
+        expr: increase(license_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: license_checker
+          team: legal
+        annotations:
+          summary: "License violation detected"
+          description: "License violation found: {{ $labels.license }} in component {{ $labels.component }}"
+
+      - alert: AttestationVerificationFailure
+        expr: rate(attestation_verifications_total{result="failure"}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          component: attestation_verifier
+          team: security
+        annotations:
+          summary: "High attestation verification failure rate"
+          description: "Attestation verification failure rate is {{ $value | humanizePercentage }}"
+
+      - alert: ModelProvenanceIncomplete
+        expr: increase(ml_model_provenance_incomplete_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          component: ml_provenance
+          team: ai_governance
+        annotations:
+          summary: "ML model provenance incomplete"
+          description: "ML model {{ $labels.model_name }} deployed without complete provenance data"
+
+  # =============================================================================
+  # Security Incident Response
+  # =============================================================================
+  - name: security_incidents
+    rules:
+      - alert: SecurityScannerDown
+        expr: up{job="security_scanner"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: security_scanner
+          team: security
+        annotations:
+          summary: "Security scanner is down"
+          description: "Security scanner has been down for 2 minutes"
+
+      - alert: MaliciousPackageDetected
+        expr: increase(malicious_packages_detected_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: package_scanner
+          team: security
+        annotations:
+          summary: "Malicious package detected"
+          description: "Malicious package {{ $labels.package_name }} detected in {{ $labels.project }}"
+
+      - alert: UnauthorizedProvenanceModification
+        expr: increase(unauthorized_provenance_modifications_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          component: provenance_integrity
+          team: security
+        annotations:
+          summary: "Unauthorized provenance modification attempt"
+          description: "Unauthorized attempt to modify provenance data for {{ $labels.artifact }}"
+
+      - alert: AnomalousDeploymentPattern
+        expr: increase(anomalous_deployments_total[10m]) > 3
+        for: 0m
+        labels:
+          severity: warning
+          component: deployment_monitor
+          team: security
+        annotations:
+          summary: "Anomalous deployment pattern detected"
+          description: "{{ $value }} anomalous deployments detected in the last 10 minutes"
