@@ -1,0 +1,92 @@
+name: Security Vulnerability Report
+description: Report a security vulnerability (please use private reporting for critical issues)
+title: "[SECURITY] "
+labels: ["security", "vulnerability", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **⚠️ IMPORTANT: For critical security vulnerabilities, please use GitHub's private vulnerability reporting feature instead of this public issue template.**
+        
+        This template is for non-critical security improvements and general security-related discussions.
+        
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity Level
+      description: How severe is this security issue?
+      options:
+        - Low - Informational or best practice improvement
+        - Medium - Potential security weakness
+        - High - Exploitable vulnerability (use private reporting)
+        - Critical - Immediate threat (use private reporting)
+    validations:
+      required: true
+      
+  - type: dropdown
+    id: category
+    attributes:
+      label: Security Category
+      description: What type of security issue is this?
+      options:
+        - Authentication & Authorization
+        - Input Validation
+        - Cryptography
+        - Supply Chain Security
+        - Configuration Security
+        - Dependency Vulnerability
+        - Container Security
+        - API Security
+        - Data Protection
+        - Infrastructure Security
+        - Other
+    validations:
+      required: true
+      
+  - type: textarea
+    id: description
+    attributes:
+      label: Security Issue Description
+      description: Describe the security issue or improvement
+      placeholder: Provide a clear description of the security concern...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential Impact
+      description: What could happen if this issue is exploited?
+      placeholder: Describe the potential security impact...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: Suggested Mitigation
+      description: How do you suggest we address this issue?
+      placeholder: Propose security improvements or fixes...
+      
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any additional information about this security issue
+      placeholder: Environment details, related vulnerabilities, etc.
+      
+  - type: checkboxes
+    id: verification
+    attributes:
+      label: Verification
+      description: Please confirm the following
+      options:
+        - label: I have verified this is not a critical vulnerability that should be reported privately
+          required: true
+        - label: I have checked this issue hasn't been reported before
+          required: true
+        - label: I agree to follow responsible disclosure practices
+          required: true
+        - label: I agree to follow this project's Code of Conduct
+          required: true

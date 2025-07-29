@@ -1,0 +1,351 @@
+# Performance Monitoring Workflow
+# =============================================================================
+
+name: Performance
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 3 * * 0'  # Weekly on Sunday at 3 AM UTC
+  workflow_dispatch:
+    inputs:
+      benchmark_type:
+        description: 'Type of benchmark to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - unit
+          - integration
+          - load
+          - memory
+          - cpu
+
+env:
+  GO_VERSION: "1.21"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =============================================================================
+  # Performance Benchmarks
+  # =============================================================================
+  
+  benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    services:
+      neo4j:
+        image: neo4j:5.14-community
+        env:
+          NEO4J_AUTH: neo4j/password
+          NEO4J_PLUGINS: '[]'
+        ports:
+          - 7687:7687
+          - 7474:7474
+        options: >-
+          --health-cmd "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 60s
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          go mod download
+          sudo apt-get update
+          sudo apt-get install -y jq bc
+          
+          # Install k6 for load testing
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Wait for services
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:7474; do sleep 1; done'
+          timeout 30 bash -c 'until redis-cli -h localhost ping; do sleep 1; done'
+
+      - name: Run performance benchmarks
+        run: |
+          chmod +x scripts/performance-benchmark.sh
+          scripts/performance-benchmark.sh
+        env:
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USERNAME: neo4j
+          NEO4J_PASSWORD: password
+          REDIS_URL: redis://localhost:6379
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v3
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: |
+            benchmark-results/
+          retention-days: 30
+
+      - name: Parse benchmark results for PR comment
+        if: github.event_name == 'pull_request'
+        id: parse-results
+        run: |
+          TIMESTAMP=$(ls benchmark-results/benchmark_*.json | head -1 | sed 's/.*benchmark_\(.*\)\.json/\1/')
+          RESULTS_FILE="benchmark-results/benchmark_${TIMESTAMP}.json"
+          
+          if [[ -f "$RESULTS_FILE" ]]; then
+            SBOM_OPS=$(jq -r '.benchmarks.unit.sbom_parsing_ops_per_sec // "N/A"' "$RESULTS_FILE")
+            PROVENANCE_OPS=$(jq -r '.benchmarks.unit.provenance_ops_per_sec // "N/A"' "$RESULTS_FILE")
+            NEO4J_WRITE=$(jq -r '.benchmarks.integration.neo4j_write_duration // "N/A"' "$RESULTS_FILE")
+            AVG_RESPONSE=$(jq -r '.benchmarks.load.avg_response_time_ms // "N/A"' "$RESULTS_FILE")
+            THROUGHPUT=$(jq -r '.benchmarks.load.throughput_rps // "N/A"' "$RESULTS_FILE")
+            
+            cat << EOF >> benchmark_summary.md
+          ## 📊 Performance Benchmark Results
+          
+          | Metric | Value | Unit |
+          |--------|--------|------|
+          | SBOM Parsing | ${SBOM_OPS} | ops/sec |
+          | Provenance Processing | ${PROVENANCE_OPS} | ops/sec |
+          | Neo4j Write Duration | ${NEO4J_WRITE} | seconds |
+          | API Response Time (avg) | ${AVG_RESPONSE} | ms |
+          | API Throughput | ${THROUGHPUT} | requests/sec |
+          
+          <details>
+          <summary>View detailed results</summary>
+          
+          \`\`\`json
+          $(cat "$RESULTS_FILE")
+          \`\`\`
+          
+          </details>
+          
+          > **Note:** Benchmarks run in GitHub Actions environment. Results may vary from production.
+          EOF
+          fi
+
+      - name: Comment PR with benchmark results
+        if: github.event_name == 'pull_request' && hashFiles('benchmark_summary.md') != ''
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const benchmarkSummary = fs.readFileSync('benchmark_summary.md', 'utf8');
+            
+            // Find existing benchmark comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.data.find(comment => 
+              comment.body.includes('Performance Benchmark Results')
+            );
+            
+            if (existingComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: benchmarkSummary
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: benchmarkSummary
+              });
+            }
+
+  # =============================================================================
+  # Performance Regression Detection
+  # =============================================================================
+  
+  regression-check:
+    name: Performance Regression Check
+    runs-on: ubuntu-latest
+    needs: benchmarks
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: current-results/
+
+      - name: Get baseline performance data
+        run: |
+          # Try to get baseline from main branch
+          git checkout main 2>/dev/null || git checkout master 2>/dev/null || echo "Could not checkout main branch"
+          
+          # Look for recent benchmark results in artifacts or create a simple baseline
+          mkdir -p baseline-results/
+          
+          # Create a simple baseline if none exists
+          cat > baseline-results/baseline.json << EOF
+          {
+            "benchmarks": {
+              "unit": {
+                "sbom_parsing_ops_per_sec": 10000,
+                "provenance_ops_per_sec": 5000
+              },
+              "integration": {
+                "neo4j_write_duration": 0.5
+              },
+              "load": {
+                "avg_response_time_ms": 100,
+                "throughput_rps": 1000
+              }
+            }
+          }
+          EOF
+
+      - name: Compare performance
+        run: |
+          # Install jq for JSON processing
+          sudo apt-get update && sudo apt-get install -y jq
+          
+          CURRENT_FILE=$(find current-results -name "benchmark_*.json" | head -1)
+          BASELINE_FILE="baseline-results/baseline.json"
+          
+          if [[ -f "$CURRENT_FILE" && -f "$BASELINE_FILE" ]]; then
+            echo "## Performance Comparison" > performance_comparison.md
+            echo "" >> performance_comparison.md
+            
+            # Compare SBOM parsing performance
+            CURRENT_SBOM=$(jq -r '.benchmarks.unit.sbom_parsing_ops_per_sec // 0' "$CURRENT_FILE")
+            BASELINE_SBOM=$(jq -r '.benchmarks.unit.sbom_parsing_ops_per_sec // 0' "$BASELINE_FILE")
+            
+            if (( $(echo "$CURRENT_SBOM > 0 && $BASELINE_SBOM > 0" | bc -l) )); then
+              SBOM_CHANGE=$(echo "scale=2; (($CURRENT_SBOM - $BASELINE_SBOM) / $BASELINE_SBOM) * 100" | bc -l)
+              if (( $(echo "$SBOM_CHANGE > 10" | bc -l) )); then
+                echo "✅ SBOM Parsing: **${SBOM_CHANGE}%** improvement (${CURRENT_SBOM} vs ${BASELINE_SBOM} ops/sec)" >> performance_comparison.md
+              elif (( $(echo "$SBOM_CHANGE < -10" | bc -l) )); then
+                echo "⚠️ SBOM Parsing: **${SBOM_CHANGE}%** regression (${CURRENT_SBOM} vs ${BASELINE_SBOM} ops/sec)" >> performance_comparison.md
+                echo "PERFORMANCE_REGRESSION=true" >> $GITHUB_ENV
+              else
+                echo "🟡 SBOM Parsing: **${SBOM_CHANGE}%** change (${CURRENT_SBOM} vs ${BASELINE_SBOM} ops/sec)" >> performance_comparison.md
+              fi
+            fi
+            
+            # Compare API response time
+            CURRENT_RESPONSE=$(jq -r '.benchmarks.load.avg_response_time_ms // 0' "$CURRENT_FILE")
+            BASELINE_RESPONSE=$(jq -r '.benchmarks.load.avg_response_time_ms // 0' "$BASELINE_FILE")
+            
+            if (( $(echo "$CURRENT_RESPONSE > 0 && $BASELINE_RESPONSE > 0" | bc -l) )); then
+              RESPONSE_CHANGE=$(echo "scale=2; (($CURRENT_RESPONSE - $BASELINE_RESPONSE) / $BASELINE_RESPONSE) * 100" | bc -l)
+              if (( $(echo "$RESPONSE_CHANGE > 20" | bc -l) )); then
+                echo "⚠️ API Response Time: **${RESPONSE_CHANGE}%** slower (${CURRENT_RESPONSE}ms vs ${BASELINE_RESPONSE}ms)" >> performance_comparison.md
+                echo "PERFORMANCE_REGRESSION=true" >> $GITHUB_ENV
+              elif (( $(echo "$RESPONSE_CHANGE < -10" | bc -l) )); then
+                echo "✅ API Response Time: **${RESPONSE_CHANGE}%** faster (${CURRENT_RESPONSE}ms vs ${BASELINE_RESPONSE}ms)" >> performance_comparison.md
+              else
+                echo "🟡 API Response Time: **${RESPONSE_CHANGE}%** change (${CURRENT_RESPONSE}ms vs ${BASELINE_RESPONSE}ms)" >> performance_comparison.md
+              fi
+            fi
+            
+            echo "" >> performance_comparison.md
+            echo "> Baseline comparison may be approximate. Run full benchmarks for accurate results." >> performance_comparison.md
+          fi
+
+      - name: Comment with performance comparison
+        if: hashFiles('performance_comparison.md') != ''
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const comparisonSummary = fs.readFileSync('performance_comparison.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comparisonSummary
+            });
+
+      - name: Fail on significant regression
+        if: env.PERFORMANCE_REGRESSION == 'true'
+        run: |
+          echo "❌ Significant performance regression detected!"
+          echo "Please review the performance impact of your changes."
+          exit 1
+
+  # =============================================================================
+  # Performance Trend Analysis
+  # =============================================================================
+  
+  trend-analysis:
+    name: Performance Trend Analysis
+    runs-on: ubuntu-latest
+    needs: benchmarks
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v3
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmark-results/
+
+      - name: Store performance metrics
+        run: |
+          # This would typically store metrics in a time-series database
+          # For now, we'll just create a summary for the step summary
+          TIMESTAMP=$(ls benchmark-results/benchmark_*.json | head -1 | sed 's/.*benchmark_\(.*\)\.json/\1/')
+          RESULTS_FILE="benchmark-results/benchmark_${TIMESTAMP}.json"
+          
+          if [[ -f "$RESULTS_FILE" ]]; then
+            echo "## Performance Metrics Stored" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Timestamp:** ${TIMESTAMP}" >> $GITHUB_STEP_SUMMARY
+            echo "- **SBOM Parsing:** $(jq -r '.benchmarks.unit.sbom_parsing_ops_per_sec // "N/A"' "$RESULTS_FILE") ops/sec" >> $GITHUB_STEP_SUMMARY
+            echo "- **API Response Time:** $(jq -r '.benchmarks.load.avg_response_time_ms // "N/A"' "$RESULTS_FILE") ms" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "These metrics can be used for performance trend analysis and regression detection." >> $GITHUB_STEP_SUMMARY
+          fi
