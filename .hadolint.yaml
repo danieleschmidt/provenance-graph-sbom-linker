@@ -1,0 +1,98 @@
+# Hadolint Configuration for Provenance Graph SBOM Linker
+# =============================================================================
+# Advanced Dockerfile linting for supply chain security application
+
+# Ignore specific rules that conflict with our requirements
+ignored:
+  # DL3008: Pin versions in apt get install (we handle this with multi-stage builds)
+  - DL3008
+  # DL3009: Delete the apt-get lists after installing something (handled by cleanup)
+  - DL3009  
+  # DL3015: Avoid additional packages by specifying --no-install-recommends (not always applicable)
+  - DL3015
+  # DL3059: Multiple consecutive RUN instructions (optimization vs readability trade-off)
+  - DL3059
+
+# Rules to be treated as warnings instead of errors
+warning:
+  # DL3042: Avoid cache directory with pip (acceptable for development images)
+  - DL3042
+  # DL4006: Set the SHELL option -o pipefail before RUN (not critical for all cases)
+  - DL4006
+
+# Rules to be treated as info instead of warnings
+info:
+  # DL3007: Using latest is prone to errors (acceptable for base images we control)
+  - DL3007
+
+# Override rules for specific files or patterns
+override:
+  # Development Dockerfile can be more lenient
+  "Dockerfile.dev":
+    ignored:
+      - DL3008
+      - DL3009
+      - DL3015
+      - DL3059
+      - DL3042
+      - DL4006
+      
+  # Multi-stage production Dockerfile should be strict
+  "Dockerfile":
+    warning: []
+    info: []
+
+# Trusted registries for base images
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - ghcr.io
+  - quay.io
+  - registry.access.redhat.com
+  - mcr.microsoft.com
+  - public.ecr.aws
+
+# Label schema validation
+labelSchema:
+  # Required labels for container metadata
+  required:
+    - maintainer
+    - version
+    - description
+    - build-date
+    - vcs-ref
+    - vcs-url
+  
+  # Recommended labels
+  recommended:
+    - org.opencontainers.image.title
+    - org.opencontainers.image.description
+    - org.opencontainers.image.version
+    - org.opencontainers.image.created
+    - org.opencontainers.image.source
+    - org.opencontainers.image.revision
+    - org.opencontainers.image.vendor
+    - org.opencontainers.image.licenses
+    - org.opencontainers.image.url
+    - org.opencontainers.image.documentation
+
+# Strict mode for production builds
+strict: false
+
+# Output format (json, tty, checkstyle, codeclimate, gitlab_codeclimate, gnu, codacy, sonarqube, sarif)
+format: tty
+
+# Show rule names in output
+showRules: true
+
+# Failure threshold (error, warning, info, style)
+failureThreshold: error
+
+# Inline ignore pragma format
+inlineIgnorePragma: "# hadolint ignore="
+
+# No color output (useful for CI)
+noColor: false
+
+# No fail on ignored rules
+noFail: false
