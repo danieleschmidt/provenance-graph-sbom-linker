@@ -1,0 +1,34 @@
+# Trivy Ignore Configuration for Provenance Graph SBOM Linker
+# =============================================================================
+# Ignore specific vulnerabilities that are false positives or accepted risks
+
+# Development dependencies - these are not shipped in production
+# Format: CVE-ID or vulnerability ID
+
+# Example: Ignore development-only vulnerabilities
+# CVE-2023-12345
+
+# Node.js development dependencies (if any)
+# These vulnerabilities only affect development environment
+# CVE-2023-XXXXX  # Development tool vulnerability
+
+# Go module vulnerabilities that are not applicable
+# CVE-2023-YYYYY  # Vulnerability in unused code path
+
+# Base image vulnerabilities that are patched in our deployment
+# CVE-2023-ZZZZZ  # Ubuntu base image issue fixed by security updates
+
+# Test-only dependencies
+# CVE-2023-AAAAA  # Test framework vulnerability not in production
+
+# Documentation: Add comments explaining why each CVE is ignored
+# Format: CVE-ID  # Reason for ignoring
+
+# Example of properly documented ignore:
+# CVE-2023-12345  # False positive: affects Windows only, we deploy on Linux
+# CVE-2023-67890  # Accepted risk: vulnerability in dev tool, not production code
+# CVE-2023-11111  # Fixed: patched in our custom build process
+
+# Note: Keep this file minimal and well-documented
+# Every ignored vulnerability should have a clear justification
+# Review ignored vulnerabilities regularly and remove when fixed

@@ -1,0 +1,82 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  labels:
+    app.kubernetes.io/name: provenance-graph-sbom-linker
+    app.kubernetes.io/component: ingress
+  annotations:
+    # NGINX Ingress Controller annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-Frame-Options "DENY" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none';" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    
+    # Cert-manager annotations (if using cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    
+    # External DNS annotations (if using external-dns)
+    external-dns.alpha.kubernetes.io/hostname: "provenance.your-domain.com"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - provenance.your-domain.com
+    secretName: provenance-linker-tls
+  rules:
+  - host: provenance.your-domain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: provenance-linker
+            port:
+              number: 80
+---
+# Internal ingress for metrics (Prometheus scraping)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: provenance-linker-metrics
+  namespace: provenance-system
+  labels:
+    app.kubernetes.io/name: provenance-graph-sbom-linker
+    app.kubernetes.io/component: metrics-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: basic-auth
+    nginx.ingress.kubernetes.io/auth-realm: "Metrics Access"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: provenance-metrics.internal
+    http:
+      paths:
+      - path: /metrics
+        pathType: Exact
+        backend:
+          service:
+            name: provenance-linker
+            port:
+              number: 9090
