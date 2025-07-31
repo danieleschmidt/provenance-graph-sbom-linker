@@ -1,0 +1,280 @@
+# Provenance Graph SBOM Linker Configuration
+# Copy this file to config.yaml and customize for your environment
+
+# Server configuration
+server:
+  port: 8080
+  host: "0.0.0.0"
+  read_timeout: "30s"
+  write_timeout: "30s"
+  idle_timeout: "60s"
+  environment: "development"  # development, staging, production
+  graceful_timeout: "30s"
+  
+  # TLS configuration (for production)
+  tls:
+    enabled: false
+    cert_file: "/etc/ssl/certs/server.crt"
+    key_file: "/etc/ssl/private/server.key"
+    min_version: "1.2"
+    
+  # Rate limiting
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+    burst_size: 20
+
+# Database configuration
+database:
+  # Neo4j configuration
+  neo4j:
+    uri: "bolt://localhost:7687"
+    username: "neo4j"
+    password: "password"
+    max_connections: 50
+    connection_timeout: "30s"
+    max_transaction_retry_time: "30s"
+    
+  # Redis configuration for caching
+  redis:
+    host: "localhost"
+    port: 6379
+    password: ""
+    db: 0
+    max_retries: 3
+    pool_size: 10
+    min_idle_connections: 5
+    max_idle_timeout: "5m"
+
+# Security configuration
+security:
+  # JWT token configuration
+  jwt:
+    secret: "your-jwt-secret-key-here"
+    expiration: "24h"
+    issuer: "provenance-linker"
+    
+  # CORS configuration
+  cors:
+    allowed_origins:
+      - "http://localhost:3000"
+      - "https://your-domain.com"
+    allowed_methods:
+      - "GET"
+      - "POST" 
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
+    allowed_headers:
+      - "Origin"
+      - "Content-Type"
+      - "Accept"
+      - "Authorization"
+      - "X-Request-ID"
+    exposed_headers:
+      - "X-Request-ID"
+    max_age: "12h"
+    credentials: true
+    
+  # API key authentication
+  api_keys:
+    enabled: true
+    header_name: "X-API-Key"
+    keys:
+      - name: "internal"
+        key: "internal-api-key-here"
+        permissions: ["read", "write"]
+      - name: "external"
+        key: "external-api-key-here" 
+        permissions: ["read"]
+
+# Signing and verification configuration
+signing:
+  # Cosign configuration
+  cosign:
+    enabled: true
+    private_key_path: "/etc/cosign/cosign.key"
+    public_key_path: "/etc/cosign/cosign.pub"
+    password_env: "COSIGN_PASSWORD"
+    
+  # GPG configuration
+  gpg:
+    enabled: false
+    keyring_path: "/etc/gpg/keyring.gpg"
+    signing_key_id: "your-key-id"
+    
+  # Certificate-based signing
+  x509:
+    enabled: false
+    cert_path: "/etc/certs/signing.crt"
+    key_path: "/etc/certs/signing.key"
+
+# SBOM generation configuration
+sbom:
+  # Default format for SBOM generation
+  default_format: "cyclonedx"
+  
+  # Supported formats
+  formats:
+    - "cyclonedx"
+    - "spdx"
+    - "syft"
+    
+  # Generation settings
+  generation:
+    include_dev_dependencies: false
+    include_test_dependencies: false
+    scan_licenses: true
+    scan_vulnerabilities: true
+    max_depth: 10
+    
+  # Storage configuration
+  storage:
+    local_path: "/data/sboms"
+    s3:
+      enabled: false
+      bucket: "your-sbom-bucket"
+      region: "us-east-1"
+      access_key_id: ""
+      secret_access_key: ""
+
+# Vulnerability scanning configuration
+vulnerability:
+  # Database sources
+  sources:
+    - name: "osv"
+      url: "https://osv-vulnerabilities.storage.googleapis.com"
+      enabled: true
+    - name: "nvd"
+      url: "https://services.nvd.nist.gov/rest/json/cves/2.0"
+      enabled: true
+      api_key: "your-nvd-api-key"
+    - name: "github"
+      url: "https://api.github.com/advisories"
+      enabled: true
+      token: "your-github-token"
+      
+  # Update schedule
+  update:
+    interval: "1h"
+    retry_attempts: 3
+    retry_delay: "5m"
+    
+  # Severity filtering
+  filtering:
+    min_severity: "medium"  # low, medium, high, critical
+    exclude_dev_dependencies: true
+    exclude_test_dependencies: true
+
+# Compliance reporting configuration
+compliance:
+  # NIST SSDF configuration
+  nist_ssdf:
+    enabled: true
+    template_path: "/etc/compliance/nist-ssdf-template.yaml"
+    output_format: "pdf"
+    
+  # EU CRA configuration
+  eu_cra:
+    enabled: true
+    template_path: "/etc/compliance/eu-cra-template.yaml"
+    output_format: "pdf"
+    
+  # Custom compliance frameworks
+  custom:
+    enabled: false
+    frameworks:
+      - name: "internal"
+        template_path: "/etc/compliance/internal-template.yaml"
+
+# Observability configuration
+observability:
+  # Logging configuration
+  logging:
+    level: "info"  # debug, info, warn, error
+    format: "json"  # json, text
+    output: "stdout"  # stdout, stderr, file
+    file_path: "/var/log/provenance-linker.log"
+    max_size: "100MB"
+    max_backups: 5
+    max_age: "30d"
+    compress: true
+    
+  # Metrics configuration
+  metrics:
+    enabled: true
+    path: "/metrics"
+    namespace: "provenance_linker"
+    
+  # Tracing configuration
+  tracing:
+    enabled: true
+    jaeger:
+      endpoint: "http://localhost:14268/api/traces"
+      service_name: "provenance-linker"
+      sample_rate: 0.1
+    otlp:
+      endpoint: "http://localhost:4317"
+      service_name: "provenance-linker"
+      
+  # Health check configuration
+  health:
+    path: "/health"
+    detailed_path: "/health/detailed"
+    
+# Container registry configuration
+registry:
+  # Default registry settings
+  default:
+    url: "ghcr.io"
+    username: ""
+    password: ""
+    
+  # Registry-specific settings
+  registries:
+    docker_hub:
+      url: "docker.io"
+      username: "your-dockerhub-username"
+      password: "your-dockerhub-token"
+    ghcr:
+      url: "ghcr.io"
+      username: "your-github-username" 
+      password: "your-github-token"
+    gcr:
+      url: "gcr.io"
+      service_account_key: "/etc/gcp/service-account.json"
+
+# Kubernetes integration
+kubernetes:
+  enabled: false
+  kubeconfig_path: "/etc/kubernetes/kubeconfig"
+  namespace: "provenance-system"
+  
+  # Admission controller settings
+  admission_controller:
+    enabled: false
+    webhook_port: 8443
+    cert_path: "/etc/certs/tls.crt"
+    key_path: "/etc/certs/tls.key"
+
+# Development settings
+development:
+  # Enable development features
+  enable_debug_endpoints: true
+  enable_pprof: true
+  enable_expvar: true
+  
+  # Mock external services
+  mock_external_services: false
+  
+  # Auto-reload configuration
+  auto_reload: true
+  watch_config: true
+
+# Feature flags
+features:
+  ai_model_tracking: true
+  advanced_analytics: false
+  experimental_apis: false
+  policy_enforcement: true
+  automated_remediation: false
