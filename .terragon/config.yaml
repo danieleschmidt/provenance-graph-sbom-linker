@@ -1,0 +1,85 @@
+# Terragon Autonomous SDLC Configuration
+# Enhanced for Maturing Repository (60-70% SDLC maturity)
+
+metadata:
+  version: "1.0"
+  repository: "provenance-graph-sbom-linker"
+  maturity_level: "maturing"
+  last_assessment: "2025-01-15T10:30:00Z"
+  
+scoring:
+  weights:
+    # Adjusted for maturing repository focusing on optimization
+    wsjf: 0.5
+    ice: 0.15
+    technicalDebt: 0.25
+    security: 0.10
+  
+  thresholds:
+    minScore: 15
+    maxRisk: 0.7
+    securityBoost: 2.0
+    complianceBoost: 1.8
+    performanceBoost: 1.5
+
+discovery:
+  sources:
+    - gitHistory
+    - staticAnalysis
+    - issueTrackers
+    - vulnerabilityDatabases
+    - performanceMonitoring
+    - codeComplexity
+    - dependencyOutdated
+  
+  tools:
+    staticAnalysis:
+      - golangci-lint
+      - gosec
+      - hadolint
+      - trivy
+    security:
+      - snyk
+      - nancy
+      - trivy
+    performance:
+      - go-bench
+      - pprof
+    compliance:
+      - slsa-verifier
+      - cosign
+
+execution:
+  maxConcurrentTasks: 2
+  testRequirements:
+    minCoverage: 85
+    performanceRegression: 3
+    securityScanPassing: true
+  rollbackTriggers:
+    - testFailure
+    - buildFailure
+    - securityViolation
+    - performanceRegression
+
+# Repository-specific enhancements for supply chain security focus
+enhancements:
+  focus_areas:
+    - "Advanced security automation"
+    - "SLSA compliance automation"
+    - "Performance optimization"
+    - "ML model governance"
+    - "Supply chain attestation"
+  
+  priority_patterns:
+    - pattern: "CVE-*"
+      boost: 3.0
+      category: "security"
+    - pattern: "SLSA"
+      boost: 2.5
+      category: "compliance"  
+    - pattern: "performance"
+      boost: 2.0
+      category: "optimization"
+    - pattern: "TODO|FIXME|HACK"
+      boost: 1.5
+      category: "technical_debt"

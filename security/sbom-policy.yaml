@@ -1,0 +1,187 @@
+# SBOM Policy Configuration
+# Advanced policy for supply chain security validation
+
+apiVersion: security.io/v1beta1
+kind: SBOMPolicy
+metadata:
+  name: provenance-sbom-policy
+  namespace: provenance-system
+spec:
+  # License compliance
+  licenses:
+    allowed:
+      - "Apache-2.0"
+      - "MIT"
+      - "BSD-2-Clause"
+      - "BSD-3-Clause"
+      - "ISC"
+      - "MPL-2.0"
+    
+    banned:
+      - "GPL-3.0"
+      - "AGPL-3.0"
+      - "GPL-2.0"
+      - "LGPL-3.0"
+      - "CC-BY-SA-*"
+    
+    requireApproval:
+      - "LGPL-2.1"
+      - "EPL-2.0"
+      - "CDDL-1.0"
+    
+    unknownLicenseAction: "require_approval"
+  
+  # Vulnerability management
+  vulnerabilities:
+    maxSeverity: "high"
+    gracePeriodDays: 30
+    criticalGracePeriodDays: 7
+    
+    # Auto-fail on these CVE patterns
+    blockedCVEs:
+      - "CVE-2021-44228"  # Log4j
+      - "CVE-2021-45046"  # Log4j
+      - "CVE-2022-22965"  # Spring4Shell
+    
+    # Severity scoring overrides
+    severityOverrides:
+      - cve: "CVE-2023-*"
+        minSeverity: "medium"
+        reason: "Recent vulnerabilities require attention"
+  
+  # Dependency management
+  dependencies:
+    maxDepth: 10
+    requireSignatures: true
+    allowedRegistries:
+      - "registry.npmjs.org"
+      - "proxy.golang.org"
+      - "pypi.org"
+      - "registry-1.docker.io"
+      - "ghcr.io"
+    
+    blockedPackages:
+      - name: "event-stream"
+        version: "3.3.6"
+        reason: "Known malicious package"
+      - name: "eslint-scope" 
+        version: "3.7.2"
+        reason: "Compromised version"
+    
+    # Age-based policies
+    staleDependencyDays: 730  # 2 years
+    deprecatedAction: "warn"
+  
+  # Build integrity
+  buildRequirements:
+    requireBuildProvenance: true
+    requireSignedCommits: false  # Optional for this maturity level
+    allowedBuilders:
+      - "https://github.com/actions"
+      - "https://gitlab.com"
+      - "https://tekton.dev"
+    
+    # SLSA requirements
+    slsa:
+      minLevel: 2
+      requireBuilder: true
+      requireSourceUri: true
+    
+  # Attestation requirements
+  attestations:
+    required:
+      - "https://slsa.dev/provenance/v0.2"
+      - "https://spdx.dev/attestation/v1"
+    
+    optional:
+      - "https://cyclonedx.org/attestation/v1"
+      - "https://example.com/custom-attestation/v1"
+  
+  # Package manager specific rules
+  packageManagers:
+    go:
+      requireGoModSum: true
+      allowReplace: false
+      blockedModules:
+        - "example.com/deprecated-module"
+    
+    npm:
+      requirePackageLock: true
+      allowPreRelease: false
+      maxDevDependencies: 100
+    
+    docker:
+      requireDistroless: false
+      maxLayers: 20
+      blockedBaseImages:
+        - "ubuntu:18.04"  # EOL
+        - "node:14"       # EOL
+        - "python:2.7"    # EOL
+  
+  # Reporting and alerts
+  reporting:
+    format: "cyclonedx-json"
+    includeDevDependencies: true
+    includeBuildTools: true
+    
+    webhooks:
+      - url: "https://security-alerts.example.com/webhook"
+        events: ["policy_violation", "new_vulnerability"]
+        headers:
+          Authorization: "Bearer ${WEBHOOK_TOKEN}"
+    
+    notifications:
+      slack:
+        channel: "#security-alerts"
+        severity: "high"
+      
+      email:
+        recipients: ["security@example.com"]
+        severity: "critical"
+
+  # Compliance mappings
+  compliance:
+    nistSSDF:
+      enabled: true
+      controls:
+        - "PS.1.1"  # Protect the development environment
+        - "PS.2.1"  # Protect the source code
+        - "PW.4.1"  # Use data flow analysis
+        - "PW.7.1"  # Identify vulnerabilities
+    
+    euCRA:
+      enabled: true
+      requirements:
+        - "Article 10"  # Cybersecurity requirements
+        - "Article 11"  # Vulnerability disclosure
+    
+    custom:
+      enabled: true
+      frameworks:
+        - name: "Internal Security Standard"
+          version: "2.0"
+          controls: ["ISS-001", "ISS-002", "ISS-003"]
+
+# Auto-remediation rules
+remediation:
+  autoUpdate:
+    enabled: true
+    schedule: "0 2 * * 1"  # Every Monday at 2 AM
+    maxRisk: "medium"
+    
+    # Only auto-update these types
+    allowedUpdateTypes:
+      - "patch"
+      - "security"
+    
+    # Require approval for these
+    requireApprovalFor:
+      - "major"
+      - "breaking"
+  
+  autoBlock:
+    enabled: true
+    conditions:
+      - "severity >= critical"
+      - "age < 7 days AND confidence < 0.8"
+      - "license IN banned"
