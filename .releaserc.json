@@ -1,0 +1,218 @@
+{
+  "branches": [
+    "main",
+    {
+      "name": "develop",
+      "prerelease": "beta"
+    },
+    {
+      "name": "release/*",
+      "prerelease": "rc"
+    }
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {
+            "type": "feat",
+            "release": "minor"
+          },
+          {
+            "type": "fix",
+            "release": "patch"
+          },
+          {
+            "type": "perf",
+            "release": "patch"
+          },
+          {
+            "type": "revert",
+            "release": "patch"
+          },
+          {
+            "type": "docs",
+            "release": false
+          },
+          {
+            "type": "style",
+            "release": false
+          },
+          {
+            "type": "chore",
+            "release": false
+          },
+          {
+            "type": "refactor",
+            "release": "patch"
+          },
+          {
+            "type": "test",
+            "release": false
+          },
+          {
+            "type": "build",
+            "release": "patch"
+          },
+          {
+            "type": "ci",
+            "release": false
+          },
+          {
+            "type": "security",
+            "release": "patch"
+          },
+          {
+            "scope": "BREAKING",
+            "release": "major"
+          }
+        ],
+        "parserOpts": {
+          "noteKeywords": [
+            "BREAKING CHANGE",
+            "BREAKING CHANGES",
+            "BREAKING"
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {
+              "type": "feat",
+              "section": "Features"
+            },
+            {
+              "type": "fix",
+              "section": "Bug Fixes"
+            },
+            {
+              "type": "perf",
+              "section": "Performance Improvements"
+            },
+            {
+              "type": "revert",
+              "section": "Reverts"
+            },
+            {
+              "type": "docs",
+              "section": "Documentation",
+              "hidden": false
+            },
+            {
+              "type": "style",
+              "section": "Styles",
+              "hidden": true
+            },
+            {
+              "type": "chore",
+              "section": "Miscellaneous Chores",
+              "hidden": true
+            },
+            {
+              "type": "refactor",
+              "section": "Code Refactoring"
+            },
+            {
+              "type": "test",
+              "section": "Tests",
+              "hidden": true
+            },
+            {
+              "type": "build",
+              "section": "Build System"
+            },
+            {
+              "type": "ci",
+              "section": "Continuous Integration",
+              "hidden": true
+            },
+            {
+              "type": "security",
+              "section": "Security"
+            }
+          ]
+        },
+        "writerOpts": {
+          "commitsSort": [
+            "subject",
+            "scope"
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nThe format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\nand this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "verifyConditionsCmd": "echo 'Verifying release conditions...'",
+        "analyzeCommitsCmd": "echo 'Analyzing commits...'",
+        "verifyReleaseCmd": "echo 'Verifying release ${nextRelease.version}...'",
+        "generateNotesCmd": "echo 'Generating release notes...'",
+        "prepareCmd": "echo 'Preparing release ${nextRelease.version}...' && ./build/build.sh release --version ${nextRelease.version}",
+        "publishCmd": "echo 'Publishing release ${nextRelease.version}...' && ./scripts/publish-release.sh ${nextRelease.version}",
+        "addChannelCmd": "echo 'Adding channel ${nextRelease.channel}...'",
+        "successCmd": "echo 'Release ${nextRelease.version} published successfully!' && ./scripts/post-release.sh ${nextRelease.version}",
+        "failCmd": "echo 'Release failed!' && ./scripts/release-failed.sh"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": [
+          "CHANGELOG.md",
+          "package.json",
+          "package-lock.json",
+          "go.mod",
+          "go.sum"
+        ],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "dist/provenance-linker-*.tar.gz",
+            "label": "Binary archives"
+          },
+          {
+            "path": "dist/checksums.txt",
+            "label": "Checksums"
+          },
+          {
+            "path": "sbom/*.json",
+            "label": "Software Bill of Materials"
+          },
+          {
+            "path": "security/*.json",
+            "label": "Security scan results"
+          }
+        ],
+        "discussionCategoryName": "Releases",
+        "releasedLabels": [
+          "released"
+        ],
+        "addReleases": "bottom"
+      }
+    ]
+  ],
+  "tagFormat": "v${version}",
+  "repositoryUrl": "https://github.com/your-org/provenance-graph-sbom-linker",
+  "debug": false,
+  "dryRun": false,
+  "ci": true
+}
