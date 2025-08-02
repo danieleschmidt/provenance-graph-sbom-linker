@@ -1,0 +1,70 @@
+# Global ownership - Core team reviews all changes by default
+* @your-org/core-maintainers
+
+# Architecture and design documents
+/docs/ARCHITECTURE.md @your-org/tech-steering-committee
+/docs/adr/ @your-org/tech-steering-committee
+/PROJECT_CHARTER.md @your-org/tech-steering-committee
+/docs/ROADMAP.md @your-org/tech-steering-committee
+
+# Security-related files require security team review
+/SECURITY.md @your-org/security-team
+/security/ @your-org/security-team
+/internal/middleware/security.go @your-org/security-team
+/**/*security* @your-org/security-team
+/**/*crypto* @your-org/security-team
+/**/*sign* @your-org/security-team
+
+# Compliance and governance
+/compliance/ @your-org/compliance-team
+/GOVERNANCE.md @your-org/tech-steering-committee
+/CODE_OF_CONDUCT.md @your-org/community-team
+
+# Infrastructure and deployment
+/deploy/ @your-org/platform-team @your-org/security-team
+/docker-compose*.yml @your-org/platform-team
+/Dockerfile* @your-org/platform-team @your-org/security-team
+/.github/workflows/ @your-org/platform-team @your-org/security-team
+/observability/ @your-org/platform-team
+
+# Go core implementation
+/cmd/ @your-org/backend-team
+/internal/ @your-org/backend-team
+/pkg/ @your-org/backend-team
+go.mod @your-org/backend-team
+go.sum @your-org/backend-team
+
+# Testing infrastructure
+/test/ @your-org/qa-team @your-org/backend-team
+/**/*_test.go @your-org/qa-team @your-org/backend-team
+
+# Web/UI components
+/web/ @your-org/frontend-team
+package.json @your-org/frontend-team
+
+# Documentation
+/docs/ @your-org/docs-team
+/README.md @your-org/docs-team @your-org/core-maintainers
+/CONTRIBUTING.md @your-org/docs-team @your-org/community-team
+/CHANGELOG.md @your-org/docs-team
+
+# Configuration files
+/config/ @your-org/platform-team @your-org/security-team
+/.env.example @your-org/platform-team
+
+# Database migrations and schemas
+/internal/database/ @your-org/backend-team @your-org/data-team
+
+# API definitions
+/api/ @your-org/backend-team @your-org/api-team
+
+# Performance and metrics
+/performance/ @your-org/performance-team
+/metrics/ @your-org/performance-team @your-org/platform-team
+
+# Scripts and automation
+/scripts/ @your-org/platform-team
+Makefile @your-org/platform-team
+
+# License and legal
+LICENSE @your-org/legal-team

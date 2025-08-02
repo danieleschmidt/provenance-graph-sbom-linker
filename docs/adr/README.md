@@ -34,7 +34,13 @@ Use the following template when creating new ADRs:
 
 ## Existing ADRs
 
+### Core Architecture
 - [ADR-0001: Use Neo4j for Provenance Graph](0001-use-neo4j-for-provenance-graph.md)
+- [ADR-0002: Event-Driven Architecture for Provenance Tracking](0002-event-driven-architecture.md)
+
+### Security & Compliance
+- [ADR-0003: Cryptographic Verification Strategy](0003-cryptographic-verification-strategy.md)
+- [ADR-0004: Multi-Tenancy and Data Isolation Strategy](0004-multi-tenancy-and-isolation.md)
 
 ## Process
 
