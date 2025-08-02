@@ -1,0 +1,299 @@
+# Service Level Objectives (SLO) Configuration
+# =============================================================================
+# Defines SLOs for supply chain security operations
+
+metadata:
+  name: provenance-graph-sbom-linker-slos
+  version: v1
+  team: platform-security
+  created: "2024-01-01"
+  updated: "2024-01-01"
+
+# Global SLO configuration
+global:
+  # Evaluation window for SLO calculations
+  evaluation_window: 30d
+  # Alert threshold before SLO violation
+  alert_threshold: 0.95
+  # Burn rate thresholds for different alert priorities
+  burn_rates:
+    critical: 14.4  # 2% budget consumed in 1 hour
+    warning: 6      # 2% budget consumed in 2 hours
+    page: 1         # 2% budget consumed in 12 hours
+
+# Service Level Indicators (SLIs) and Objectives
+slos:
+  # =============================================================================
+  # API Availability and Performance
+  # =============================================================================
+  - name: api_availability
+    description: "API endpoint availability for provenance operations"
+    sli:
+      type: availability
+      query: |
+        sum(rate(http_requests_total{job="provenance-linker",code!~"5.."}[5m])) /
+        sum(rate(http_requests_total{job="provenance-linker"}[5m]))
+    objective: 99.9  # 99.9% availability
+    error_budget: 0.1  # 0.1% error budget
+    labels:
+      service: provenance-api
+      tier: critical
+    alerts:
+      - type: burn_rate
+        severity: critical
+        threshold: 14.4
+        window: 1h
+      - type: burn_rate
+        severity: warning
+        threshold: 6
+        window: 2h
+
+  - name: api_latency
+    description: "API response time for provenance operations"
+    sli:
+      type: latency
+      query: |
+        histogram_quantile(0.95,
+          sum(rate(http_request_duration_seconds_bucket{job="provenance-linker"}[5m]))
+          by (le)
+        )
+    objective: 0.500  # 500ms P95 latency
+    threshold: 0.500
+    labels:
+      service: provenance-api
+      tier: critical
+
+  # =============================================================================
+  # SBOM Processing Performance
+  # =============================================================================
+  - name: sbom_processing_success_rate
+    description: "SBOM processing success rate"
+    sli:
+      type: availability
+      query: |
+        sum(rate(sbom_processing_total{result="success"}[5m])) /
+        sum(rate(sbom_processing_total[5m]))
+    objective: 99.5  # 99.5% success rate
+    error_budget: 0.5
+    labels:
+      service: sbom-processor
+      tier: high
+
+  - name: sbom_processing_latency
+    description: "SBOM processing latency"
+    sli:
+      type: latency
+      query: |
+        histogram_quantile(0.90,
+          sum(rate(sbom_processing_duration_seconds_bucket[5m]))
+          by (le)
+        )
+    objective: 30.0  # 30 seconds P90 latency
+    threshold: 30.0
+    labels:
+      service: sbom-processor
+      tier: high
+
+  # =============================================================================
+  # Security Verification Performance
+  # =============================================================================
+  - name: signature_verification_success_rate
+    description: "Signature verification success rate"
+    sli:
+      type: availability
+      query: |
+        sum(rate(provenance_verifications_total{result="success"}[5m])) /
+        sum(rate(provenance_verifications_total[5m]))
+    objective: 99.95  # 99.95% success rate
+    error_budget: 0.05
+    labels:
+      service: signature-verifier
+      tier: critical
+
+  - name: vulnerability_scan_freshness
+    description: "Vulnerability scan data freshness"
+    sli:
+      type: freshness
+      query: |
+        (time() - max(vulnerability_scan_last_updated_timestamp)) / 3600
+    objective: 24.0  # Within 24 hours
+    threshold: 24.0
+    labels:
+      service: vulnerability-scanner
+      tier: high
+
+  # =============================================================================
+  # Database Performance
+  # =============================================================================
+  - name: neo4j_availability
+    description: "Neo4j database availability"
+    sli:
+      type: availability
+      query: up{job="neo4j"}
+    objective: 99.9  # 99.9% availability
+    error_budget: 0.1
+    labels:
+      service: neo4j
+      tier: critical
+
+  - name: neo4j_query_latency
+    description: "Neo4j query response time"
+    sli:
+      type: latency
+      query: |
+        histogram_quantile(0.95,
+          sum(rate(neo4j_cypher_query_duration_seconds_bucket[5m]))
+          by (le)
+        )
+    objective: 1.0  # 1 second P95 latency
+    threshold: 1.0
+    labels:
+      service: neo4j
+      tier: critical
+
+  # =============================================================================
+  # Compliance and Governance
+  # =============================================================================
+  - name: compliance_score_quality
+    description: "Compliance score quality threshold"
+    sli:
+      type: quality
+      query: |
+        sum(compliance_scores_total{score>=80}) /
+        sum(compliance_scores_total)
+    objective: 95.0  # 95% of scans meet compliance threshold
+    threshold: 95.0
+    labels:
+      service: compliance-checker
+      tier: high
+
+  - name: attestation_coverage
+    description: "Attestation coverage for artifacts"
+    sli:
+      type: coverage
+      query: |
+        sum(artifacts_with_attestation_total) /
+        sum(artifacts_total)
+    objective: 90.0  # 90% of artifacts have attestations
+    threshold: 90.0
+    labels:
+      service: attestation-manager
+      tier: high
+
+# =============================================================================
+# Alert Rules for SLO Violations
+# =============================================================================
+alert_rules:
+  - alert: SLOBurnRateCritical
+    expr: |
+      (
+        slo_burn_rate_1h > 14.4
+        and slo_burn_rate_5m > 14.4
+      )
+      or
+      (
+        slo_burn_rate_6h > 6
+        and slo_burn_rate_30m > 6
+      )
+    for: 2m
+    labels:
+      severity: critical
+      team: platform-security
+      slo_type: burn_rate
+    annotations:
+      summary: "Critical SLO burn rate for {{ $labels.slo_name }}"
+      description: "SLO {{ $labels.slo_name }} is burning error budget at {{ $value }}x rate"
+      runbook_url: "https://runbooks.company.com/slo-burn-rate"
+
+  - alert: SLOBurnRateWarning
+    expr: |
+      (
+        slo_burn_rate_1d > 3
+        and slo_burn_rate_2h > 3
+      )
+      or
+      (
+        slo_burn_rate_3d > 1
+        and slo_burn_rate_6h > 1
+      )
+    for: 15m
+    labels:
+      severity: warning
+      team: platform-security
+      slo_type: burn_rate
+    annotations:
+      summary: "Warning SLO burn rate for {{ $labels.slo_name }}"
+      description: "SLO {{ $labels.slo_name }} is burning error budget at {{ $value }}x rate"
+
+  - alert: SLOErrorBudgetExhausted
+    expr: slo_error_budget_remaining < 0
+    for: 5m
+    labels:
+      severity: critical
+      team: platform-security
+      slo_type: budget_exhausted
+    annotations:
+      summary: "SLO error budget exhausted for {{ $labels.slo_name }}"
+      description: "SLO {{ $labels.slo_name }} has exhausted its error budget"
+
+# =============================================================================
+# Dashboard Configuration
+# =============================================================================
+dashboards:
+  - name: slo-overview
+    title: "Service Level Objectives Overview"
+    tags: [slo, overview]
+    panels:
+      - type: stat
+        title: "Overall SLO Health"
+        targets:
+          - expr: avg(slo_compliance_ratio)
+      - type: table
+        title: "SLO Status"
+        targets:
+          - expr: slo_compliance_ratio
+      - type: graph
+        title: "Error Budget Burn Rate"
+        targets:
+          - expr: slo_burn_rate_1h
+
+  - name: slo-details
+    title: "Detailed SLO Metrics"
+    tags: [slo, details]
+    panels:
+      - type: heatmap
+        title: "SLI Performance Heatmap"
+        targets:
+          - expr: sli_value
+      - type: graph
+        title: "Error Budget Consumption"
+        targets:
+          - expr: slo_error_budget_consumed
+
+# =============================================================================
+# Notification Configuration
+# =============================================================================
+notifications:
+  channels:
+    - name: slo-critical
+      webhook_url: ${SLACK_WEBHOOK_CRITICAL}
+      conditions:
+        - severity: critical
+          slo_type: burn_rate
+    - name: slo-warnings
+      webhook_url: ${SLACK_WEBHOOK_WARNINGS}
+      conditions:
+        - severity: warning
+          slo_type: burn_rate
+  templates:
+    critical: |
+      🚨 *Critical SLO Alert*
+      Service: {{ .Labels.service }}
+      SLO: {{ .Labels.slo_name }}
+      Current burn rate: {{ .Value }}x
+      Error budget remaining: {{ .ErrorBudgetRemaining }}%
+    warning: |
+      ⚠️ *SLO Warning*
+      Service: {{ .Labels.service }}
+      SLO: {{ .Labels.slo_name }}
+      Current burn rate: {{ .Value }}x
