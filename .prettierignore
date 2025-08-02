@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+coverage/
+*.log
+
+# Generated files
+*.generated.*
+*.gen.*
+go.sum
+package-lock.json
+yarn.lock
+
+# Binary files
+*.bin
+*.exe
+*.so
+*.dylib
+
+# Certificate and key files
+*.pem
+*.key
+*.cert
+*.crt
+*.p12
+*.keystore
+
+# SBOM and attestation files (formatted by specific tools)
+*.sbom
+*.cyclonedx
+*.spdx
+*.att
+*.attestation
+*.slsa
+
+# Documentation that shouldn't be formatted
+CHANGELOG.md
+LICENSE
+COPYING
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Helm charts (have specific formatting)
+charts/*/templates/
+
+# GitHub workflows (have specific formatting requirements)
+.github/workflows/
+
+# Test fixtures
+test/fixtures/
+**/testdata/
+
+# Configuration files with specific formatting
+.golangci.yml
+.hadolint.yaml
+.trivyignore
+go.work
+go.work.sum
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Archive files
+*.tar
+*.tar.gz
+*.zip
+*.rar
