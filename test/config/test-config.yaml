@@ -1,0 +1,293 @@
+# Test Configuration for Provenance Graph SBOM Linker
+
+# Database configuration for tests
+database:
+  neo4j:
+    uri: bolt://localhost:7687
+    username: neo4j
+    password: devpassword
+    database: neo4j
+    max_connections: 10
+    connection_timeout: 30s
+    max_retry_time: 15s
+    # Use separate database for integration tests
+    test_database: testdb
+    
+  redis:
+    url: redis://localhost:6379/1
+    password: ""
+    db: 1  # Use different DB for tests
+    max_idle_connections: 5
+    max_active_connections: 20
+    timeout: 10s
+
+# API configuration for tests
+api:
+  host: localhost
+  port: 8080
+  base_path: /api/v1
+  timeout: 30s
+  max_request_size: 10MB
+  
+  # CORS settings for tests
+  cors:
+    origins:
+      - "http://localhost:3000"
+      - "http://localhost:8080"
+    methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    headers:
+      - Content-Type
+      - Authorization
+      - X-Requested-With
+
+# Authentication configuration for tests
+auth:
+  jwt:
+    secret: test-jwt-secret-key-for-testing-only
+    expiration: 1h
+    refresh_expiration: 24h
+    issuer: provenance-test
+    audience: provenance-api-test
+    
+  # Test API keys
+  api_keys:
+    - key: test-api-key-12345
+      name: integration-test
+      permissions:
+        - read
+        - write
+    - key: readonly-test-key-67890
+      name: readonly-test
+      permissions:
+        - read
+
+# Storage configuration for tests
+storage:
+  type: filesystem
+  path: /tmp/test-artifacts
+  max_size: 1GB
+  
+  # S3 test configuration (for integration tests)
+  s3:
+    bucket: test-provenance-artifacts
+    region: us-east-1
+    endpoint: http://localhost:9000  # MinIO
+    access_key: minioadmin
+    secret_key: minioadmin123
+    use_ssl: false
+
+# Observability configuration for tests
+observability:
+  # Metrics
+  metrics:
+    enabled: true
+    port: 9090
+    path: /metrics
+    namespace: provenance_test
+    
+  # Tracing
+  tracing:
+    enabled: true
+    endpoint: http://localhost:4317
+    service_name: provenance-test
+    sample_rate: 1.0  # Sample all requests in tests
+    
+  # Logging
+  logging:
+    level: debug
+    format: json
+    output: stdout
+
+# Security configuration for tests
+security:
+  # Cosign configuration for tests
+  cosign:
+    enabled: true
+    public_key_path: test/fixtures/certificates/cosign/test.pub
+    private_key_path: test/fixtures/certificates/cosign/test.key
+    experimental: false
+    
+  # TLS configuration for tests
+  tls:
+    enabled: false  # Disable TLS for easier testing
+    cert_path: test/fixtures/certificates/tls/localhost.crt
+    key_path: test/fixtures/certificates/tls/localhost.key
+    ca_path: test/fixtures/certificates/ca/test-ca.crt
+
+# External service configuration for tests
+external:
+  # GitHub configuration for tests
+  github:
+    token: ""  # Set via environment variable
+    api_url: https://api.github.com
+    webhook_secret: test-webhook-secret
+    timeout: 30s
+    
+  # Container registry configuration for tests
+  registry:
+    url: localhost:5000
+    username: testuser
+    password: testpass
+    insecure: true
+    timeout: 30s
+    
+  # Vulnerability scanner configuration for tests
+  vulnerability:
+    grype:
+      db_update_frequency: 24h
+      timeout: 60s
+    trivy:
+      db_update_frequency: 24h
+      timeout: 60s
+    osv:
+      api_url: https://api.osv.dev
+      timeout: 30s
+
+# Processing configuration for tests
+processing:
+  workers:
+    count: 2  # Fewer workers for tests
+    queue_size: 100
+    timeout: 60s
+    
+  sbom:
+    parser_timeout: 30s
+    max_size: 10MB
+    supported_formats:
+      - cyclonedx
+      - spdx
+      - syft
+      
+  graph:
+    batch_size: 100
+    max_depth: 10
+    query_timeout: 15s
+
+# Test-specific configuration
+test:
+  # Timeouts for different test types
+  timeouts:
+    unit: 5s
+    integration: 30s
+    e2e: 300s
+    
+  # Test data configuration
+  data:
+    cleanup: true  # Clean up test data after each test
+    fixtures_path: test/fixtures
+    temp_path: /tmp/provenance-test
+    
+  # Parallel test configuration
+  parallel:
+    enabled: true
+    max_workers: 4
+    
+  # Coverage configuration
+  coverage:
+    threshold: 80
+    exclude_patterns:
+      - "**/*_mock.go"
+      - "**/testutil/**"
+      - "**/fixtures/**"
+      - "**/*_test.go"
+      
+  # Performance test configuration
+  performance:
+    duration: 30s
+    ramp_up: 10s
+    max_users: 100
+    target_rps: 1000
+
+# Feature flags for tests
+features:
+  # Experimental features (disabled by default in tests)
+  blockchain_integration: false
+  quantum_resistant_crypto: false
+  federated_provenance: false
+  ai_threat_detection: false
+  
+  # Beta features
+  advanced_analytics: false
+  natural_language_queries: false
+  automated_compliance: true
+
+# Compliance frameworks for tests
+compliance:
+  nist_ssdf:
+    enabled: true
+    config_path: test/fixtures/policies/compliance/nist-ssdf.yaml
+    
+  eu_cra:
+    enabled: true
+    config_path: test/fixtures/policies/compliance/eu-cra.yaml
+    
+  custom:
+    enabled: true
+    config_path: test/fixtures/policies/compliance/custom.yaml
+
+# Mock service configuration
+mocks:
+  # Enable/disable mock services
+  github: false
+  registry: false
+  vulnerability_scanner: false
+  sigstore: false
+  
+  # Mock service endpoints
+  endpoints:
+    github: http://localhost:8090
+    registry: http://localhost:8091
+    vulnerability: http://localhost:8092
+    sigstore: http://localhost:8093
+
+# Environment-specific overrides
+environments:
+  ci:
+    # CI-specific configuration
+    database:
+      neo4j:
+        uri: bolt://neo4j-ci:7687
+      redis:
+        url: redis://redis-ci:6379/1
+        
+    storage:
+      path: /tmp/ci-test-artifacts
+      
+    test:
+      timeouts:
+        integration: 60s
+        e2e: 600s
+      parallel:
+        max_workers: 2
+        
+  local:
+    # Local development configuration
+    observability:
+      logging:
+        level: debug
+        format: text
+        
+    test:
+      data:
+        cleanup: false  # Keep test data for debugging
+        
+  docker:
+    # Docker compose test environment
+    database:
+      neo4j:
+        uri: bolt://neo4j:7687
+      redis:
+        url: redis://redis:6379/1
+        
+    storage:
+      s3:
+        endpoint: http://minio:9000
+        
+    external:
+      registry:
+        url: registry:5000
