@@ -1,0 +1,443 @@
+# Security Monitoring Configuration
+# =============================================================================
+# Advanced security monitoring for supply chain threats and anomalies
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-monitoring-config
+  labels:
+    component: security-monitoring
+    app: provenance-graph-sbom-linker
+data:
+  security-rules.yaml: |
+    # Security monitoring rules for threat detection
+    groups:
+      # =============================================================================
+      # Supply Chain Attack Detection
+      # =============================================================================
+      - name: supply_chain_attacks
+        rules:
+          - alert: SuspiciousPackageSignature
+            expr: |
+              increase(signature_verification_suspicious_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+              category: supply_chain_attack
+              threat_type: package_tampering
+            annotations:
+              summary: "Suspicious package signature detected"
+              description: "Package {{ $labels.package_name }} has suspicious signature patterns"
+              threat_intelligence: "Potential package tampering or supply chain compromise"
+              recommended_action: "Quarantine package and investigate signature chain"
+
+          - alert: UnknownSigningKey
+            expr: |
+              increase(unknown_signing_keys_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: warning
+              category: supply_chain_attack
+              threat_type: unknown_signer
+            annotations:
+              summary: "Unknown signing key encountered"
+              description: "Artifact signed with unknown key: {{ $labels.key_id }}"
+              recommended_action: "Verify key authenticity and update trusted key store"
+
+          - alert: DependencyConfusion
+            expr: |
+              increase(dependency_confusion_attempts_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+              category: supply_chain_attack
+              threat_type: dependency_confusion
+            annotations:
+              summary: "Dependency confusion attack detected"
+              description: "Attempt to substitute internal package {{ $labels.internal_package }} with external malicious package"
+
+          - alert: TyposquattingDetected
+            expr: |
+              increase(typosquatting_detections_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: warning
+              category: supply_chain_attack
+              threat_type: typosquatting
+            annotations:
+              summary: "Typosquatting attempt detected"
+              description: "Potential typosquatting package: {{ $labels.suspicious_package }} similar to {{ $labels.legitimate_package }}"
+
+      # =============================================================================
+      # Malware and Backdoor Detection
+      # =============================================================================
+      - name: malware_detection
+        rules:
+          - alert: MaliciousCodePatterns
+            expr: |
+              increase(malicious_code_patterns_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+              category: malware
+              threat_type: code_injection
+            annotations:
+              summary: "Malicious code patterns detected"
+              description: "Malicious patterns found in {{ $labels.component }}: {{ $labels.pattern_type }}"
+              threat_intelligence: "Known malware signature or obfuscated code"
+
+          - alert: SuspiciousNetworkActivity
+            expr: |
+              rate(network_connections_total{destination!~"known_good_domains"}[5m]) > 10
+            for: 2m
+            labels:
+              severity: warning
+              category: malware
+              threat_type: c2_communication
+            annotations:
+              summary: "Suspicious network activity detected"
+              description: "High rate of connections to unknown domains from {{ $labels.source }}"
+
+          - alert: UnauthorizedFileModification
+            expr: |
+              increase(unauthorized_file_modifications_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+              category: malware
+              threat_type: file_tampering
+            annotations:
+              summary: "Unauthorized file modification detected"
+              description: "Unauthorized modification of {{ $labels.file_path }} by {{ $labels.process }}"
+
+      # =============================================================================
+      # Anomaly Detection
+      # =============================================================================
+      - name: behavioral_anomalies
+        rules:
+          - alert: AnomalousDeploymentFrequency
+            expr: |
+              rate(deployments_total[1h]) > (avg_over_time(rate(deployments_total[1h])[7d]) * 3)
+            for: 15m
+            labels:
+              severity: warning
+              category: anomaly
+              threat_type: deployment_anomaly
+            annotations:
+              summary: "Anomalous deployment frequency detected"
+              description: "Current deployment rate: {{ $value }}/h, 3x higher than 7-day average"
+
+          - alert: UnusualVulnerabilitySpike
+            expr: |
+              increase(vulnerabilities_detected_total[1h]) > 
+              (avg_over_time(increase(vulnerabilities_detected_total[1h])[7d]) * 2)
+            for: 10m
+            labels:
+              severity: warning
+              category: anomaly
+              threat_type: vulnerability_spike
+            annotations:
+              summary: "Unusual spike in vulnerability detections"
+              description: "Vulnerability detection rate 2x higher than normal"
+
+          - alert: AbnormalScanDuration
+            expr: |
+              histogram_quantile(0.95, rate(scan_duration_seconds_bucket[5m])) > 
+              (histogram_quantile(0.95, rate(scan_duration_seconds_bucket[1h] offset 24h)) * 2)
+            for: 10m
+            labels:
+              severity: warning
+              category: anomaly
+              threat_type: performance_anomaly
+            annotations:
+              summary: "Abnormal scan duration detected"
+              description: "Scan duration 2x longer than usual: {{ $value }}s"
+
+      # =============================================================================
+      # Compliance and Policy Violations
+      # =============================================================================
+      - name: compliance_violations
+        rules:
+          - alert: UnauthorizedLicenseUsage
+            expr: |
+              increase(unauthorized_licenses_total[5m]) > 0
+            for: 0m
+            labels:
+              severity: warning
+              category: compliance
+              violation_type: license_policy
+            annotations:
+              summary: "Unauthorized license usage detected"  
+              description: "Unauthorized license {{ $labels.license }} used in {{ $labels.project }}"
+
+          - alert: PolicyViolationCritical
+            expr: |
+              increase(policy_violations_total{severity="critical"}[5m]) > 0
+            for: 0m
+            labels:
+              severity: critical
+              category: compliance
+              violation_type: security_policy
+            annotations:
+              summary: "Critical security policy violation"
+              description: "Critical policy {{ $labels.policy_name }} violated in {{ $labels.component }}"
+
+          - alert: ComplianceScoreDeterioration
+            expr: |
+              (compliance_score - compliance_score offset 1d) < -10
+            for: 5m
+            labels:
+              severity: warning
+              category: compliance
+              violation_type: score_deterioration
+            annotations:
+              summary: "Compliance score deterioration"
+              description: "Compliance score dropped by {{ $value }}% in the last 24 hours"
+
+  threat-intelligence.yaml: |
+    # Threat intelligence feeds and indicators
+    threat_feeds:
+      - name: malware_hashes
+        type: hash_list
+        update_interval: 1h
+        source: https://feeds.threatintel.company.com/malware-hashes
+        format: json
+        indicators:
+          - type: sha256
+            field: hash
+          - type: md5  
+            field: legacy_hash
+
+      - name: suspicious_domains
+        type: domain_list  
+        update_interval: 30m
+        source: https://feeds.threatintel.company.com/domains
+        format: csv
+        indicators:
+          - type: domain
+            field: domain_name
+
+      - name: known_vulnerabilities
+        type: cve_list
+        update_interval: 4h
+        source: https://nvd.nist.gov/feeds/json/cve/1.1/
+        format: json
+        indicators:
+          - type: cve_id
+            field: cve.CVE_data_meta.ID
+
+    # IoC (Indicators of Compromise) matching rules
+    ioc_rules:
+      - name: malware_hash_match
+        description: "Match known malware hashes"
+        query: |
+          artifact_hash in (threat_intel_hashes{type="malware"})
+        severity: critical
+        action: quarantine
+
+      - name: suspicious_domain_communication
+        description: "Communication with suspicious domains"
+        query: |
+          network_destination in (threat_intel_domains{type="suspicious"})
+        severity: warning
+        action: alert
+
+      - name: cve_exploit_attempt
+        description: "Known CVE exploitation attempt"
+        query: |
+          vulnerability_id in (threat_intel_cves{exploited="true"})
+        severity: critical
+        action: block
+
+  security-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Security Monitoring Dashboard",
+        "tags": ["security", "monitoring", "threats"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Threat Detection Overview",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(increase(security_threats_total[24h]))",
+                "legendFormat": "Total Threats (24h)"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {
+                  "mode": "thresholds"
+                },
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 1},
+                    {"color": "red", "value": 10}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Supply Chain Attack Attempts",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(supply_chain_attacks_total[5m])",
+                "legendFormat": "{{ attack_type }}"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Vulnerability Severity Distribution",
+            "type": "piechart",
+            "targets": [
+              {
+                "expr": "sum by (severity) (vulnerabilities_total)",
+                "legendFormat": "{{ severity }}"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Security Scan Results Timeline",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(security_scans_total[5m])",
+                "legendFormat": "{{ result }}"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Top Malicious Packages",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "topk(10, sum by (package_name) (malicious_packages_total))",
+                "format": "table"
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Compliance Score Trend",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "compliance_score",
+                "legendFormat": "{{ standard }}"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-24h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-monitoring
+  labels:
+    component: security-monitoring
+spec:
+  selector:
+    component: security-monitoring
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-monitoring
+  labels:
+    component: security-monitoring
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: security-monitoring
+  template:
+    metadata:
+      labels:
+        component: security-monitoring
+    spec:
+      containers:
+        - name: security-monitor
+          image: provenance-linker/security-monitor:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: CONFIG_PATH
+              value: "/etc/security-monitoring"
+            - name: THREAT_INTEL_UPDATE_INTERVAL
+              value: "1h"
+            - name: LOG_LEVEL
+              value: "INFO"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/security-monitoring
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: security-monitoring-config
+
+---
+# ServiceMonitor for Prometheus scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: security-monitoring
+  labels:
+    component: security-monitoring
+spec:
+  selector:
+    matchLabels:
+      component: security-monitoring
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
