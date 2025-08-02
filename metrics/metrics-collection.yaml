@@ -1,0 +1,384 @@
+# Metrics Collection Configuration
+# =============================================================================
+# Comprehensive metrics collection for supply chain security operations
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metrics-collection-config
+  labels:
+    component: metrics-collection
+    app: provenance-graph-sbom-linker
+data:
+  metrics-config.yaml: |
+    # Metrics collection configuration
+    metrics:
+      # =============================================================================
+      # Business Metrics
+      # =============================================================================
+      business:
+        - name: artifacts_processed_total
+          type: counter
+          description: "Total number of artifacts processed"
+          labels: [artifact_type, environment, team]
+          
+        - name: vulnerabilities_detected_total
+          type: counter
+          description: "Total vulnerabilities detected in artifacts"
+          labels: [severity, cve_id, component, artifact_type]
+          
+        - name: compliance_score
+          type: gauge
+          description: "Current compliance score for artifacts"
+          labels: [standard, artifact_type, team]
+          
+        - name: license_violations_total
+          type: counter
+          description: "License violations detected"
+          labels: [license_type, severity, component]
+          
+        - name: supply_chain_risk_score
+          type: gauge
+          description: "Supply chain risk assessment score"
+          labels: [artifact, risk_category, environment]
+
+      # =============================================================================
+      # Technical Performance Metrics
+      # =============================================================================
+      performance:
+        - name: api_request_duration_seconds
+          type: histogram
+          description: "API request duration in seconds"
+          labels: [method, endpoint, status_code]
+          buckets: [0.001, 0.01, 0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
+          
+        - name: api_requests_total
+          type: counter
+          description: "Total API requests"
+          labels: [method, endpoint, status_code]
+          
+        - name: sbom_processing_duration_seconds
+          type: histogram
+          description: "SBOM processing time"
+          labels: [format, size, complexity]
+          buckets: [1, 5, 10, 30, 60, 180, 300, 600]
+          
+        - name: database_query_duration_seconds
+          type: histogram
+          description: "Database query execution time"
+          labels: [operation, table, index_used]
+          buckets: [0.001, 0.01, 0.1, 0.5, 1.0, 5.0]
+          
+        - name: cache_hit_ratio
+          type: gauge
+          description: "Cache hit ratio percentage"
+          labels: [cache_type, operation]
+
+      # =============================================================================
+      # Security Metrics
+      # =============================================================================
+      security:
+        - name: security_scans_total
+          type: counter
+          description: "Total security scans performed"
+          labels: [scan_type, result, severity]
+          
+        - name: signature_verifications_total
+          type: counter
+          description: "Digital signature verifications"
+          labels: [result, algorithm, key_source]
+          
+        - name: threat_detections_total
+          type: counter
+          description: "Security threats detected"
+          labels: [threat_type, severity, source]
+          
+        - name: access_attempts_total
+          type: counter
+          description: "Authentication and authorization attempts"
+          labels: [result, method, user_type]
+          
+        - name: data_integrity_checks_total
+          type: counter
+          description: "Data integrity verification checks"
+          labels: [result, data_type, check_type]
+
+      # =============================================================================
+      # Operational Metrics
+      # =============================================================================
+      operational:
+        - name: system_resource_usage
+          type: gauge
+          description: "System resource utilization"
+          labels: [resource_type, component, instance]
+          
+        - name: queue_size
+          type: gauge
+          description: "Processing queue sizes"
+          labels: [queue_name, priority]
+          
+        - name: error_rate
+          type: gauge
+          description: "Error rate percentage"
+          labels: [component, error_type, severity]
+          
+        - name: deployment_frequency
+          type: counter
+          description: "Deployment frequency tracking"
+          labels: [environment, deployment_type, result]
+          
+        - name: mean_time_to_recovery_seconds
+          type: histogram
+          description: "Mean time to recovery from incidents"
+          labels: [severity, component, incident_type]
+          buckets: [60, 300, 900, 1800, 3600, 7200, 14400, 28800]
+
+    # =============================================================================
+    # Collection Rules
+    # =============================================================================
+    collection:
+      # Scrape intervals for different metric types
+      intervals:
+        business: 30s
+        performance: 15s
+        security: 10s
+        operational: 30s
+        
+      # Retention policies
+      retention:
+        high_frequency: 24h    # Performance metrics
+        medium_frequency: 7d   # Business metrics
+        low_frequency: 30d     # Operational metrics
+        security: 90d          # Security metrics
+        
+      # Aggregation rules
+      aggregation:
+        - source: api_request_duration_seconds
+          target: api_latency_p95
+          rule: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m]))
+          
+        - source: vulnerabilities_detected_total
+          target: vulnerability_rate
+          rule: rate(vulnerabilities_detected_total[5m])
+          
+        - source: security_scans_total
+          target: scan_success_rate
+          rule: rate(security_scans_total{result="success"}[5m]) / rate(security_scans_total[5m])
+
+    # =============================================================================
+    # Alert Rules Based on Metrics
+    # =============================================================================
+    alert_rules:
+      # Business metric alerts
+      - name: HighVulnerabilityRate
+        expr: rate(vulnerabilities_detected_total{severity="critical"}[5m]) > 0.1
+        labels:
+          severity: critical
+          category: security
+        annotations:
+          summary: "High rate of critical vulnerabilities detected"
+          
+      - name: ComplianceScoreDeterioration
+        expr: (compliance_score - compliance_score offset 1h) < -10
+        labels:
+          severity: warning
+          category: compliance
+        annotations:
+          summary: "Compliance score has deteriorated significantly"
+          
+      # Performance metric alerts
+      - name: HighAPILatency
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds_bucket[5m])) > 1.0
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "API latency above acceptable threshold"
+          
+      - name: LowCacheHitRatio
+        expr: cache_hit_ratio < 0.7
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Cache hit ratio below optimal threshold"
+
+  # =============================================================================
+  # Custom Metrics Dashboard Configuration
+  # =============================================================================
+  dashboard-config.json: |
+    {
+      "dashboard": {
+        "title": "Supply Chain Security Metrics",
+        "tags": ["supply-chain", "security", "metrics"],
+        "panels": [
+          {
+            "title": "Artifact Processing Overview",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(increase(artifacts_processed_total[24h]))",
+                "legendFormat": "Processed (24h)"
+              },
+              {
+                "expr": "sum(rate(artifacts_processed_total[5m])) * 60",
+                "legendFormat": "Rate (per minute)"
+              }
+            ]
+          },
+          {
+            "title": "Security Posture",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum by (severity) (vulnerabilities_detected_total)",
+                "legendFormat": "{{ severity }}"
+              }
+            ]
+          },
+          {
+            "title": "Compliance Score Trend",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "avg(compliance_score) by (standard)",
+                "legendFormat": "{{ standard }}"
+              }
+            ]
+          },
+          {
+            "title": "API Performance",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))",
+                "legendFormat": "50th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(api_request_duration_seconds_bucket[5m])) by (le))",
+                "legendFormat": "95th percentile"
+              }
+            ]
+          },
+          {
+            "title": "Security Scan Results",
+            "type": "piechart",
+            "targets": [
+              {
+                "expr": "sum by (result) (security_scans_total)",
+                "legendFormat": "{{ result }}"
+              }
+            ]
+          },
+          {
+            "title": "Resource Utilization",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "system_resource_usage{resource_type=\"cpu\"}",
+                "legendFormat": "CPU - {{ instance }}"
+              },
+              {
+                "expr": "system_resource_usage{resource_type=\"memory\"}",
+                "legendFormat": "Memory - {{ instance }}"
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-collector
+  labels:
+    component: metrics-collector
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      component: metrics-collector
+  template:
+    metadata:
+      labels:
+        component: metrics-collector
+    spec:
+      containers:
+        - name: metrics-collector
+          image: provenance-linker/metrics-collector:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: CONFIG_PATH
+              value: "/etc/metrics-config"
+            - name: COLLECTION_INTERVAL
+              value: "15s"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus:9090"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/metrics-config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: metrics-collection-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-collector
+  labels:
+    component: metrics-collector
+spec:
+  selector:
+    component: metrics-collector
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+
+---
+# ServiceMonitor for Prometheus scraping
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: metrics-collector
+  labels:
+    component: metrics-collector
+spec:
+  selector:
+    matchLabels:
+      component: metrics-collector
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics

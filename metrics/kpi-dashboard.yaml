@@ -1,0 +1,562 @@
+# Key Performance Indicators (KPI) Dashboard Configuration
+# =============================================================================
+# Business and technical KPIs for supply chain security operations
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kpi-dashboard-config
+  labels:
+    component: kpi-dashboard
+    app: provenance-graph-sbom-linker
+data:
+  kpi-definitions.yaml: |
+    # KPI Definitions for Supply Chain Security
+    kpis:
+      # =============================================================================
+      # Business KPIs
+      # =============================================================================
+      business:
+        - name: supply_chain_security_score
+          description: "Overall supply chain security posture score"
+          type: gauge
+          calculation: |
+            (
+              (signed_artifacts_ratio * 0.3) +
+              (vulnerability_free_ratio * 0.25) +
+              (compliance_score_normalized * 0.2) +
+              (provenance_coverage_ratio * 0.15) +
+              (license_compliance_ratio * 0.1)
+            ) * 100
+          target: 85
+          critical_threshold: 70
+          warning_threshold: 80
+          unit: "percentage"
+          
+        - name: security_debt_trend
+          description: "Trend of accumulated security debt over time"
+          type: gauge
+          calculation: |
+            sum(vulnerabilities_total{severity=~"critical|high"}) +
+            sum(license_violations_total) +
+            sum(unsigned_artifacts_total)
+          target: 0
+          critical_threshold: 10
+          warning_threshold: 5
+          unit: "count"
+          
+        - name: mean_time_to_remediate_vulnerabilities
+          description: "Average time to remediate security vulnerabilities"
+          type: histogram
+          calculation: |
+            histogram_quantile(0.50, 
+              sum(rate(vulnerability_remediation_duration_seconds_bucket[7d]))
+              by (le, severity)
+            ) / 3600
+          target: 24
+          critical_threshold: 168  # 1 week
+          warning_threshold: 72    # 3 days
+          unit: "hours"
+          
+        - name: artifact_release_velocity
+          description: "Rate of secure artifact releases per week"
+          type: gauge
+          calculation: |
+            sum(increase(artifacts_released_total{signed="true"}[7d]))
+          target: 50
+          critical_threshold: 10
+          warning_threshold: 25
+          unit: "count/week"
+
+      # =============================================================================
+      # Technical Performance KPIs
+      # =============================================================================
+      technical:
+        - name: api_availability_slo
+          description: "API availability SLO compliance"
+          type: gauge
+          calculation: |
+            (
+              sum(rate(http_requests_total{code!~"5.."}[30d])) /
+              sum(rate(http_requests_total[30d]))
+            ) * 100
+          target: 99.9
+          critical_threshold: 99.0
+          warning_threshold: 99.5
+          unit: "percentage"
+          
+        - name: scan_processing_efficiency
+          description: "Efficiency of security scanning operations"
+          type: gauge
+          calculation: |
+            sum(rate(security_scans_total{result="success"}[1h])) /
+            sum(rate(security_scans_total[1h])) * 100
+          target: 95
+          critical_threshold: 85
+          warning_threshold: 90
+          unit: "percentage"
+          
+        - name: sbom_generation_latency_p95
+          description: "95th percentile SBOM generation latency"
+          type: gauge
+          calculation: |
+            histogram_quantile(0.95,
+              sum(rate(sbom_generation_duration_seconds_bucket[1h]))
+              by (le)
+            )
+          target: 30
+          critical_threshold: 120
+          warning_threshold: 60
+          unit: "seconds"
+          
+        - name: database_query_performance
+          description: "Database query performance score"
+          type: gauge
+          calculation: |
+            (
+              (slow_queries_ratio < 0.01) * 40 +
+              (avg_query_time < 0.1) * 35 +
+              (connection_pool_utilization < 0.8) * 25
+            )
+          target: 90
+          critical_threshold: 60
+          warning_threshold: 75
+          unit: "score"
+
+      # =============================================================================
+      # Security KPIs
+      # =============================================================================
+      security:
+        - name: zero_day_response_time
+          description: "Response time to zero-day vulnerabilities"
+          type: histogram
+          calculation: |
+            histogram_quantile(0.90,
+              sum(rate(zero_day_response_duration_seconds_bucket[30d]))
+              by (le)
+            ) / 3600
+          target: 4
+          critical_threshold: 24
+          warning_threshold: 12
+          unit: "hours"
+          
+        - name: signature_verification_coverage
+          description: "Percentage of artifacts with verified signatures"
+          type: gauge
+          calculation: |
+            sum(artifacts_total{signature_verified="true"}) /
+            sum(artifacts_total) * 100
+          target: 100
+          critical_threshold: 85
+          warning_threshold: 95
+          unit: "percentage"
+          
+        - name: supply_chain_attack_detection_rate
+          description: "Rate of supply chain attack attempts detected"
+          type: gauge
+          calculation: |
+            sum(rate(supply_chain_attacks_detected_total[24h]))
+          target: 0
+          critical_threshold: 5
+          warning_threshold: 1
+          unit: "count/day"
+          
+        - name: compliance_posture_score
+          description: "Overall compliance with security standards"
+          type: gauge
+          calculation: |
+            avg(compliance_score) by (standard)
+          target: 90
+          critical_threshold: 70
+          warning_threshold: 80
+          unit: "percentage"
+
+      # =============================================================================
+      # Operational KPIs
+      # =============================================================================
+      operational:
+        - name: deployment_success_rate
+          description: "Percentage of successful deployments"
+          type: gauge
+          calculation: |
+            sum(rate(deployments_total{result="success"}[7d])) /
+            sum(rate(deployments_total[7d])) * 100
+          target: 95
+          critical_threshold: 80
+          warning_threshold: 90
+          unit: "percentage"
+          
+        - name: incident_resolution_time
+          description: "Mean time to resolve security incidents"
+          type: histogram
+          calculation: |
+            histogram_quantile(0.50,
+              sum(rate(incident_resolution_duration_seconds_bucket[30d]))
+              by (le, severity)
+            ) / 3600
+          target: 4
+          critical_threshold: 24
+          warning_threshold: 12
+          unit: "hours"
+          
+        - name: automation_coverage
+          description: "Percentage of processes that are automated"
+          type: gauge
+          calculation: |
+            sum(automated_processes_total) /
+            sum(total_processes) * 100
+          target: 80
+          critical_threshold: 50
+          warning_threshold: 65
+          unit: "percentage"
+          
+        - name: team_productivity_index
+          description: "Developer productivity index based on multiple factors"
+          type: gauge
+          calculation: |
+            (
+              (deployment_frequency_score * 0.3) +
+              (lead_time_score * 0.25) +
+              (change_failure_rate_score * 0.25) +
+              (recovery_time_score * 0.2)
+            )
+          target: 85
+          critical_threshold: 60
+          warning_threshold: 70
+          unit: "score"
+
+  dashboard-layout.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Supply Chain Security KPI Dashboard",
+        "tags": ["kpi", "supply-chain", "security", "business"],
+        "timezone": "UTC",
+        "refresh": "5m",
+        "time": {
+          "from": "now-7d",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Supply Chain Security Score",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "supply_chain_security_score",
+                "legendFormat": "Security Score"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "min": 0,
+                "max": 100,
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 70},
+                    {"color": "green", "value": 85}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "API Availability SLO",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+            "targets": [
+              {
+                "expr": "api_availability_slo",
+                "legendFormat": "Availability"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "decimals": 2,
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 99.0},
+                    {"color": "green", "value": 99.5}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Vulnerability Response Time",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+            "targets": [
+              {
+                "expr": "mean_time_to_remediate_vulnerabilities",
+                "legendFormat": "MTTR"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "h",
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": 0},
+                    {"color": "yellow", "value": 24},
+                    {"color": "red", "value": 72}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Signature Verification Coverage",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+            "targets": [
+              {
+                "expr": "signature_verification_coverage",
+                "legendFormat": "Signed Artifacts"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 85},
+                    {"color": "green", "value": 95}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "Security Trends",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+            "targets": [
+              {
+                "expr": "supply_chain_security_score",
+                "legendFormat": "Security Score"
+              },
+              {
+                "expr": "signature_verification_coverage",
+                "legendFormat": "Signature Coverage"
+              },
+              {
+                "expr": "compliance_posture_score",
+                "legendFormat": "Compliance Score"
+              }
+            ],
+            "yAxes": [
+              {
+                "unit": "percent",
+                "min": 0,
+                "max": 100
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Performance Metrics",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+            "targets": [
+              {
+                "expr": "api_availability_slo",
+                "legendFormat": "API Availability"
+              },
+              {
+                "expr": "scan_processing_efficiency",
+                "legendFormat": "Scan Efficiency"
+              },
+              {
+                "expr": "deployment_success_rate",
+                "legendFormat": "Deployment Success"
+              }
+            ]
+          },
+          {
+            "id": 7,
+            "title": "Vulnerability Distribution",
+            "type": "piechart",
+            "gridPos": {"h": 6, "w": 8, "x": 0, "y": 12},
+            "targets": [
+              {
+                "expr": "sum by (severity) (vulnerabilities_total)",
+                "legendFormat": "{{ severity }}"
+              }
+            ]
+          },
+          {
+            "id": 8,
+            "title": "Response Time Trends",
+            "type": "graph",
+            "gridPos": {"h": 6, "w": 8, "x": 8, "y": 12},
+            "targets": [
+              {
+                "expr": "mean_time_to_remediate_vulnerabilities",
+                "legendFormat": "Vulnerability MTTR"
+              },
+              {
+                "expr": "incident_resolution_time",
+                "legendFormat": "Incident MTTR"
+              },
+              {
+                "expr": "zero_day_response_time",
+                "legendFormat": "Zero-day Response"
+              }
+            ],
+            "yAxes": [
+              {
+                "unit": "h",
+                "min": 0
+              }
+            ]
+          },
+          {
+            "id": 9,
+            "title": "Team Productivity",
+            "type": "stat",
+            "gridPos": {"h": 6, "w": 8, "x": 16, "y": 12},
+            "targets": [
+              {
+                "expr": "team_productivity_index",
+                "legendFormat": "Productivity Index"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "short",
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "yellow", "value": 60},
+                    {"color": "green", "value": 85}
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+
+  alerts-config.yaml: |
+    # KPI-based alerts configuration
+    groups:
+      - name: kpi_alerts
+        rules:
+          - alert: SupplyChainSecurityScoreLow
+            expr: supply_chain_security_score < 70
+            for: 15m
+            labels:
+              severity: critical
+              category: business_kpi
+            annotations:
+              summary: "Supply chain security score below critical threshold"
+              description: "Current score: {{ $value }}%, target: 85%"
+              
+          - alert: VulnerabilityResponseTimeTooHigh
+            expr: mean_time_to_remediate_vulnerabilities > 72
+            for: 30m
+            labels:
+              severity: warning
+              category: security_kpi
+            annotations:
+              summary: "Vulnerability response time exceeds target"
+              description: "Current MTTR: {{ $value }} hours, target: 24 hours"
+              
+          - alert: APIAvailabilityBelowSLO
+            expr: api_availability_slo < 99.0
+            for: 5m
+            labels:
+              severity: critical
+              category: technical_kpi
+            annotations:
+              summary: "API availability below SLO"
+              description: "Current availability: {{ $value }}%, SLO: 99.9%"
+              
+          - alert: SignatureVerificationCoverageLow
+            expr: signature_verification_coverage < 85
+            for: 1h
+            labels:
+              severity: warning
+              category: security_kpi
+            annotations:
+              summary: "Signature verification coverage too low"
+              description: "Current coverage: {{ $value }}%, target: 100%"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kpi-dashboard
+  labels:
+    component: kpi-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: kpi-dashboard
+  template:
+    metadata:
+      labels:
+        component: kpi-dashboard
+    spec:
+      containers:
+        - name: kpi-calculator
+          image: provenance-linker/kpi-calculator:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: CONFIG_PATH
+              value: "/etc/kpi-config"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus:9090"
+            - name: CALCULATION_INTERVAL
+              value: "60s"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/kpi-config
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: kpi-dashboard-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kpi-dashboard
+  labels:
+    component: kpi-dashboard
+spec:
+  selector:
+    component: kpi-dashboard
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+    - name: metrics
+      port: 9090
+      targetPort: 9090
