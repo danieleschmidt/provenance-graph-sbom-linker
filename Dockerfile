@@ -67,7 +67,7 @@ RUN trivy fs --security-checks vuln --severity HIGH,CRITICAL --exit-code 1 /src 
 
 # =============================================================================
 # Runtime stage
-FROM alpine:3.19 AS runtime
+FROM alpine:3.22 AS runtime
 
 # Install runtime dependencies
 RUN apk add --no-cache \
