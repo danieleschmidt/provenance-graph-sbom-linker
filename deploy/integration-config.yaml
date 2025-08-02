@@ -1,0 +1,430 @@
+# Integration Configuration for Provenance Graph SBOM Linker
+# =============================================================================
+# Complete system integration configuration with all components
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: provenance-system
+  labels:
+    app: provenance-graph-sbom-linker
+    environment: production
+    security: high
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: provenance-linker-config
+  namespace: provenance-system
+data:
+  app-config.yaml: |
+    # Application Configuration
+    server:
+      port: 8080
+      host: "0.0.0.0"
+      read_timeout: 30s
+      write_timeout: 30s
+      idle_timeout: 120s
+      
+    # Database configuration
+    database:
+      neo4j:
+        uri: "bolt://neo4j:7687"
+        username: "neo4j"
+        password_secret: "neo4j-password"
+        max_connections: 100
+        connection_timeout: 30s
+        
+    # Cache configuration  
+    cache:
+      redis:
+        addr: "redis:6379"
+        password_secret: "redis-password"
+        db: 0
+        pool_size: 20
+        min_idle_conns: 5
+        
+    # Object storage configuration
+    storage:
+      s3:
+        endpoint: "minio:9000"
+        bucket: "provenance-data"
+        access_key_secret: "minio-access-key"
+        secret_key_secret: "minio-secret-key"
+        use_ssl: false
+        
+    # Security configuration
+    security:
+      signing:
+        key_path: "/etc/signing-keys/private.pem"
+        cert_path: "/etc/signing-keys/cert.pem"
+      verification:
+        trusted_keys_dir: "/etc/trusted-keys"
+      rate_limiting:
+        requests_per_minute: 100
+        burst_size: 20
+        
+    # SBOM processing configuration
+    sbom:
+      supported_formats: ["cyclonedx", "spdx"]
+      max_file_size: "100MB"
+      processing_timeout: "5m"
+      validation_strict: true
+      
+    # Vulnerability scanning
+    vulnerability:
+      scanners:
+        - name: "trivy"
+          endpoint: "trivy:8080"
+          timeout: "2m"
+        - name: "grype"
+          endpoint: "grype:8080"
+          timeout: "2m"
+      update_interval: "4h"
+      
+    # Compliance configuration
+    compliance:
+      standards: ["NIST", "CIS", "GDPR", "SOC2"]
+      auto_reporting: true
+      report_schedule: "0 2 * * *"  # Daily at 2 AM
+      
+    # Monitoring and metrics
+    monitoring:
+      prometheus:
+        enabled: true
+        path: "/metrics"
+        interval: "15s"
+      jaeger:
+        endpoint: "jaeger:14268"
+        sampler_ratio: 0.1
+      health_check:
+        path: "/health"
+        interval: "30s"
+
+---
+# Secret for sensitive configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: provenance-linker-secrets
+  namespace: provenance-system
+type: Opaque
+stringData:
+  neo4j-password: "secure-neo4j-password"
+  redis-password: "secure-redis-password"
+  minio-access-key: "provenance-access-key"
+  minio-secret-key: "secure-minio-secret-key"
+  jwt-secret: "jwt-signing-secret"
+  webhook-secret: "webhook-validation-secret"
+
+---
+# Main application deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  labels:
+    app: provenance-linker
+    component: api-server
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: provenance-linker
+  template:
+    metadata:
+      labels:
+        app: provenance-linker
+        component: api-server
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: provenance-linker
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      containers:
+        - name: provenance-linker
+          image: ghcr.io/danieleschmidt/provenance-graph-sbom-linker:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          env:
+            - name: CONFIG_PATH
+              value: "/etc/config/app-config.yaml"
+            - name: ENVIRONMENT
+              value: "production"
+            - name: LOG_LEVEL
+              value: "info"
+          envFrom:
+            - secretRef:
+                name: provenance-linker-secrets
+          volumeMounts:
+            - name: config
+              mountPath: /etc/config
+              readOnly: true
+            - name: signing-keys
+              mountPath: /etc/signing-keys
+              readOnly: true
+            - name: trusted-keys
+              mountPath: /etc/trusted-keys
+              readOnly: true
+            - name: temp-storage
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: provenance-linker-config
+        - name: signing-keys
+          secret:
+            secretName: signing-keys
+            defaultMode: 0400
+        - name: trusted-keys
+          configMap:
+            name: trusted-keys
+        - name: temp-storage
+          emptyDir:
+            sizeLimit: 1Gi
+
+---
+# Service for the main application
+apiVersion: v1
+kind: Service
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  labels:
+    app: provenance-linker
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    app: provenance-linker
+
+---
+# ServiceAccount for the application
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  labels:
+    app: provenance-linker
+
+---
+# RBAC configuration
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+subjects:
+  - kind: ServiceAccount
+    name: provenance-linker
+    namespace: provenance-system
+roleRef:
+  kind: Role
+  name: provenance-linker
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: provenance-linker
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: provenance-linker
+
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+spec:
+  podSelector:
+    matchLabels:
+      app: provenance-linker
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nginx-ingress
+        - podSelector:
+            matchLabels:
+              app: prometheus
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: neo4j
+      ports:
+        - protocol: TCP
+          port: 7687
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    - to: []  # Allow external HTTPS for vulnerability databases
+      ports:
+        - protocol: TCP
+          port: 443
+
+---
+# Ingress configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+    - hosts:
+        - provenance.company.com
+      secretName: provenance-linker-tls
+  rules:
+    - host: provenance.company.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: provenance-linker
+                port:
+                  number: 8080
+
+---
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: provenance-linker
+  namespace: provenance-system
+  labels:
+    app: provenance-linker
+spec:
+  selector:
+    matchLabels:
+      app: provenance-linker
+  endpoints:
+    - port: http
+      interval: 15s
+      path: /metrics
+      honorLabels: true
