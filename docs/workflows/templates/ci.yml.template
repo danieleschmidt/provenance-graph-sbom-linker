@@ -1,0 +1,681 @@
+# =============================================================================
+# CI/CD Pipeline for Provenance Graph SBOM Linker
+# =============================================================================
+# This workflow provides comprehensive continuous integration including:
+# - Multi-platform testing
+# - Security scanning (SAST, dependency analysis, container scanning)
+# - Build verification with SLSA provenance
+# - SBOM generation and verification
+# - Artifact signing and attestation
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'release/*' ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: 'Enable debug logging'
+        default: false
+      security_scan_level:
+        type: choice
+        description: 'Security scan level'
+        options:
+        - standard
+        - strict
+        - paranoid
+        default: standard
+
+env:
+  # Build configuration
+  GO_VERSION: '1.21'
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  
+  # Registry configuration
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  
+  # Security scanning
+  TRIVY_VERSION: 'latest'
+  COSIGN_VERSION: 'v2.2.2'
+  SYFT_VERSION: 'latest'
+  
+  # Compliance
+  SLSA_VERIFIER_VERSION: 'v2.4.1'
+
+# Security: Restrict permissions to minimum required
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  id-token: write  # For OIDC token generation
+  packages: write  # For container registry
+
+jobs:
+  # =============================================================================
+  # Code Quality and Security Analysis
+  # =============================================================================
+  
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for accurate analysis
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+        check-latest: true
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: |
+        go mod download
+        go mod verify
+    
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        args: --timeout=10m --verbose
+        skip-cache: false
+        skip-pkg-cache: false
+        skip-build-cache: false
+    
+    - name: Run gosec (Security Analysis)
+      uses: securecodewarrior/github-action-gosec@master
+      with:
+        args: '-fmt sarif -out gosec-report.sarif ./...'
+    
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: gosec-report.sarif
+        category: gosec
+    
+    - name: Run gocyclo (Complexity Analysis)
+      run: |
+        go install github.com/fzipp/gocyclo/cmd/gocyclo@latest
+        gocyclo -over 15 . | tee gocyclo-report.txt
+    
+    - name: Run go vet
+      run: go vet ./...
+    
+    - name: Check formatting
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted:"
+          gofmt -s -l .
+          exit 1
+        fi
+    
+    - name: Verify go mod tidy
+      run: |
+        go mod tidy
+        if [ -n "$(git diff --exit-code go.mod go.sum)" ]; then
+          echo "go.mod or go.sum is not tidy"
+          exit 1
+        fi
+
+  # =============================================================================
+  # Dependency Security Scanning
+  # =============================================================================
+  
+  dependency-scan:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Run Nancy (Dependency Vulnerability Scanner)
+      run: |
+        go install github.com/sonatypecommunity/nancy@latest
+        go list -json -deps ./... | nancy sleuth
+    
+    - name: Run Trivy (Filesystem Scan)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-fs-report.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-fs-report.sarif'
+        category: 'trivy-fs'
+    
+    - name: Run govulncheck
+      run: |
+        go install golang.org/x/vuln/cmd/govulncheck@latest
+        govulncheck ./...
+
+  # =============================================================================
+  # Multi-Platform Testing
+  # =============================================================================
+  
+  test:
+    name: Test Suite
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ['1.20', '1.21']
+        include:
+        - os: ubuntu-latest
+          go-version: '1.21'
+          coverage: true
+    
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    
+    services:
+      neo4j:
+        image: neo4j:5.14-community
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+          NEO4J_PLUGINS: '["graph-data-science"]'
+        ports:
+        - 7474:7474
+        - 7687:7687
+        options: >-
+          --health-cmd "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+        - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ matrix.go-version }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-${{ matrix.go-version }}-
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod download
+    
+    - name: Run unit tests
+      run: |
+        go test -race -v ./... -coverprofile=coverage.out -covermode=atomic
+      env:
+        TEST_NEO4J_URI: bolt://localhost:7687
+        TEST_NEO4J_USERNAME: neo4j
+        TEST_NEO4J_PASSWORD: testpassword
+        TEST_REDIS_URL: redis://localhost:6379/1
+    
+    - name: Run integration tests
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        INTEGRATION_TEST=true go test -v ./test/integration/...
+      env:
+        TEST_NEO4J_URI: bolt://localhost:7687
+        TEST_NEO4J_USERNAME: neo4j
+        TEST_NEO4J_PASSWORD: testpassword
+        TEST_REDIS_URL: redis://localhost:6379/1
+    
+    - name: Upload coverage to Codecov
+      if: matrix.coverage
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # =============================================================================
+  # Build and Package
+  # =============================================================================
+  
+  build:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [code-quality, dependency-scan, test]
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      image-digest: ${{ steps.build.outputs.digest }}
+      sbom-hash: ${{ steps.sbom.outputs.hash }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Install build tools
+      run: |
+        go install github.com/anchore/syft/cmd/syft@${{ env.SYFT_VERSION }}
+        curl -LO https://github.com/sigstore/cosign/releases/download/${{ env.COSIGN_VERSION }}/cosign-linux-amd64
+        sudo install cosign-linux-amd64 /usr/local/bin/cosign
+    
+    - name: Calculate version
+      id: version
+      run: |
+        if [[ $GITHUB_REF == refs/tags/* ]]; then
+          VERSION=${GITHUB_REF#refs/tags/}
+        else
+          VERSION=$(git describe --tags --always --dirty)
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION"
+    
+    - name: Build binaries
+      run: |
+        ./scripts/build.sh \
+          --cross-compile \
+          --sign \
+          --attest
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        COMMIT: ${{ github.sha }}
+        DATE: ${{ github.event.head_commit.timestamp }}
+        ENABLE_CGO: 1
+        ENABLE_SIGNING: true
+        ENABLE_ATTESTATION: true
+    
+    - name: Generate SBOM
+      id: sbom
+      run: |
+        syft . -o cyclonedx-json=sbom.cyclonedx.json
+        syft . -o spdx-json=sbom.spdx.json
+        SBOM_HASH=$(sha256sum sbom.cyclonedx.json | cut -d' ' -f1)
+        echo "hash=$SBOM_HASH" >> $GITHUB_OUTPUT
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+          type=sha,prefix={{branch}}-
+        labels: |
+          org.opencontainers.image.title=${{ github.repository }}
+          org.opencontainers.image.description=Provenance Graph SBOM Linker
+          org.opencontainers.image.vendor=Your Organization
+          org.opencontainers.image.licenses=Apache-2.0
+    
+    - name: Build and push container image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          VERSION=${{ steps.version.outputs.version }}
+          COMMIT=${{ github.sha }}
+          DATE=${{ github.event.head_commit.timestamp }}
+    
+    - name: Generate container SBOM
+      run: |
+        syft ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }} \
+          -o cyclonedx-json=container-sbom.cyclonedx.json
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+          dist/
+          sbom*.json
+          container-sbom*.json
+        retention-days: 30
+
+  # =============================================================================
+  # Container Security Scanning
+  # =============================================================================
+  
+  container-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: success()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy container scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+        format: 'sarif'
+        output: 'trivy-container-report.sarif'
+        severity: 'CRITICAL,HIGH'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-container-report.sarif'
+        category: 'trivy-container'
+    
+    - name: Run Grype container scan
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        grype ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }} \
+          -o sarif --file grype-container-report.sarif
+    
+    - name: Upload Grype scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'grype-container-report.sarif'
+        category: 'grype-container'
+
+  # =============================================================================
+  # SLSA Provenance and Attestation
+  # =============================================================================
+  
+  provenance:
+    name: Generate SLSA Provenance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build
+    if: success()
+    
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install SLSA verifier
+      run: |
+        curl -LO https://github.com/slsa-framework/slsa-verifier/releases/download/${{ env.SLSA_VERIFIER_VERSION }}/slsa-verifier-linux-amd64
+        sudo install slsa-verifier-linux-amd64 /usr/local/bin/slsa-verifier
+    
+    - name: Generate SLSA provenance
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.9.0
+      with:
+        base64-subjects: ${{ needs.build.outputs.sbom-hash }}
+        upload-assets: true
+    
+    - name: Sign container image with Cosign
+      run: |
+        echo "${{ secrets.COSIGN_PRIVATE_KEY }}" > cosign.key
+        cosign sign --key cosign.key ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ needs.build.outputs.image-digest }}
+        rm cosign.key
+      env:
+        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+
+  # =============================================================================
+  # End-to-End Testing
+  # =============================================================================
+  
+  e2e-test:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: build
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    
+    services:
+      neo4j:
+        image: neo4j:5.14-community
+        env:
+          NEO4J_AUTH: neo4j/testpassword
+        ports:
+        - 7474:7474
+        - 7687:7687
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+        - 6379:6379
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        path: artifacts/
+    
+    - name: Run E2E tests
+      run: |
+        E2E_TEST=true go test -v ./test/e2e/...
+      env:
+        TEST_NEO4J_URI: bolt://localhost:7687
+        TEST_NEO4J_USERNAME: neo4j
+        TEST_NEO4J_PASSWORD: testpassword
+        TEST_REDIS_URL: redis://localhost:6379/1
+        BINARY_PATH: ${{ github.workspace }}/artifacts/bin/provenance-linker
+
+  # =============================================================================
+  # Performance Testing
+  # =============================================================================
+  
+  performance-test:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'performance')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Run benchmark tests
+      run: |
+        go test -bench=. -benchmem -benchtime=30s ./test/performance/... | tee benchmark-results.txt
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results
+        path: benchmark-results.txt
+
+  # =============================================================================
+  # Compliance Validation
+  # =============================================================================
+  
+  compliance:
+    name: Compliance Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build, provenance]
+    if: success()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: build-artifacts
+        path: artifacts/
+    
+    - name: Validate NIST SSDF compliance
+      run: |
+        # Run NIST SSDF compliance checks
+        ./scripts/validate-compliance.sh nist-ssdf
+    
+    - name: Validate EU CRA compliance
+      run: |
+        # Run EU CRA compliance checks
+        ./scripts/validate-compliance.sh eu-cra
+    
+    - name: Generate compliance report
+      run: |
+        # Generate comprehensive compliance report
+        ./scripts/generate-compliance-report.sh
+    
+    - name: Upload compliance artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: compliance-artifacts
+        path: |
+          compliance-report.html
+          nist-ssdf-report.json
+          eu-cra-report.json
+
+  # =============================================================================
+  # Deployment (Production)
+  # =============================================================================
+  
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [build, container-scan, provenance, e2e-test, compliance]
+    if: github.ref == 'refs/heads/main' && success()
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure Kubernetes context
+      run: |
+        # Configure kubectl with production cluster
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy to production
+      run: |
+        # Deploy using Helm or kubectl
+        helm upgrade --install provenance-linker ./deploy/helm/ \
+          --namespace production \
+          --set image.repository=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} \
+          --set image.tag=${{ needs.build.outputs.version }} \
+          --set image.digest=${{ needs.build.outputs.image-digest }}
+    
+    - name: Verify deployment
+      run: |
+        # Verify deployment health
+        kubectl rollout status deployment/provenance-linker -n production
+        kubectl get pods -n production -l app=provenance-linker
+    
+    - name: Run smoke tests
+      run: |
+        # Run basic smoke tests against production
+        ./scripts/smoke-tests.sh https://provenance.your-org.com
+
+  # =============================================================================
+  # Notification and Cleanup
+  # =============================================================================
+  
+  notify:
+    name: Notifications
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+    - name: Notify on success
+      if: needs.deploy-production.result == 'success'
+      run: |
+        # Send success notification (Slack, email, etc.)
+        echo "Deployment successful!"
+    
+    - name: Notify on failure
+      if: needs.deploy-production.result == 'failure'
+      run: |
+        # Send failure notification
+        echo "Deployment failed!"
