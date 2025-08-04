@@ -1,6 +1,6 @@
 # provenance-graph-sbom-linker
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/your-org/provenance-graph-sbom-linker/ci.yml?branch=main)](https://github.com/your-org/provenance-graph-sbom-linker/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/danieleschmidt/provenance-graph-sbom-linker/ci.yml?branch=main)](https://github.com/danieleschmidt/provenance-graph-sbom-linker/actions)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org/dl/)
 [![SLSA Level](https://img.shields.io/badge/SLSA-Level%203-green)](https://slsa.dev)
@@ -37,7 +37,7 @@ End-to-end software supply chain provenance tracker. Links source commits → bu
 
 ```bash
 # Linux/macOS
-curl -L https://github.com/your-org/provenance-graph-sbom-linker/releases/latest/download/provenance-linker_$(uname -s)_$(uname -m).tar.gz | tar xz
+curl -L https://github.com/danieleschmidt/provenance-graph-sbom-linker/releases/latest/download/provenance-linker_$(uname -s)_$(uname -m).tar.gz | tar xz
 sudo mv provenance-linker /usr/local/bin/
 
 # Verify installation
@@ -47,20 +47,20 @@ provenance-linker version
 ### Go Installation
 
 ```bash
-go install github.com/your-org/provenance-graph-sbom-linker/cmd/provenance-linker@latest
+go install github.com/danieleschmidt/provenance-graph-sbom-linker/cmd/provenance-linker@latest
 ```
 
 ### Docker
 
 ```bash
-docker pull your-org/provenance-linker:latest
-docker run -v $(pwd):/workspace your-org/provenance-linker:latest analyze
+docker pull danieleschmidt/provenance-linker:latest
+docker run -v $(pwd):/workspace danieleschmidt/provenance-linker:latest analyze
 ```
 
 ### Kubernetes Operator
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/your-org/provenance-graph-sbom-linker/main/deploy/operator.yaml
+kubectl apply -f https://raw.githubusercontent.com/danieleschmidt/provenance-graph-sbom-linker/main/deploy/operator.yaml
 ```
 
 ## ⚡ Quick Start
@@ -176,7 +176,7 @@ provenance:
     output-file: sbom.spdx.json
     
 - name: Track Build Provenance
-  uses: your-org/provenance-action@v1
+  uses: danieleschmidt/provenance-action@v1
   with:
     artifact: ${{ env.IMAGE_NAME }}
     sbom: sbom.spdx.json
@@ -187,7 +187,7 @@ provenance:
 
 ```go
 // Track model serving provenance
-import "github.com/your-org/provenance-linker/pkg/tracker"
+import "github.com/danieleschmidt/provenance-linker/pkg/tracker"
 
 tracker := tracker.New(tracker.Config{
     Endpoint: "http://provenance-service:8080",
@@ -306,7 +306,7 @@ spec:
     - keyless:
         identities:
         - issuer: https://accounts.google.com
-          subject: release@your-org.com
+          subject: release@danieleschmidt.com
 ```
 
 ### Attestation Framework
@@ -350,7 +350,7 @@ tracker.register_model(
 # Link to deployment
 tracker.link_deployment(
     model="sentiment-analyzer:2.0.0",
-    endpoint="https://api.your-org.com/sentiment",
+    endpoint="https://api.danieleschmidt.com/sentiment",
     environment="production",
     signatures=["cosign", "model-cards"]
 )
@@ -540,8 +540,8 @@ GET /api/v1/compliance/nist-ssdf/status
 
 ```go
 import (
-    "github.com/your-org/provenance-linker/pkg/client"
-    "github.com/your-org/provenance-linker/pkg/types"
+    "github.com/danieleschmidt/provenance-linker/pkg/client"
+    "github.com/danieleschmidt/provenance-linker/pkg/types"
 )
 
 // Initialize client
@@ -683,7 +683,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/provenance-graph-sbom-linker
+git clone https://github.com/danieleschmidt/provenance-graph-sbom-linker
 cd provenance-graph-sbom-linker
 
 # Install dependencies
@@ -743,7 +743,7 @@ spec:
     spec:
       containers:
       - name: provenance-linker
-        image: your-org/provenance-linker:latest
+        image: danieleschmidt/provenance-linker:latest
         ports:
         - containerPort: 8080
         env:
@@ -757,11 +757,11 @@ spec:
 
 ```bash
 # Add helm repository
-helm repo add your-org https://charts.your-org.com
+helm repo add danieleschmidt https://charts.danieleschmidt.com
 helm repo update
 
 # Install with custom values
-helm install provenance-linker your-org/provenance-linker \
+helm install provenance-linker danieleschmidt/provenance-linker \
   --namespace provenance-system \
   --create-namespace \
   --values values.yaml
@@ -885,13 +885,13 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [Sigstore](https://www.sigstore.dev/) - Signature transparency
 - [SLSA](https://slsa.dev/) - Supply chain security framework
 - [CycloneDX](https://cyclonedx.org/) - SBOM specification
-- [Lang-Observatory](https://github.com/your-org/lang-observatory) - Observability platform
+- [Lang-Observatory](https://github.com/danieleschmidt/lang-observatory) - Observability platform
 - [In-toto](https://in-toto.io/) - Supply chain attestations
 
 ## 📞 Support
 
-- 📧 Email: supply-chain@your-org.com
-- 💬 Discord: [Join our community](https://discord.gg/your-org)
-- 📖 Documentation: [Full docs](https://docs.your-org.com/provenance-linker)
-- 🎓 Training: [Supply Chain Security Course](https://learn.your-org.com/supply-chain)
-- 🐛 Issues: [GitHub Issues](https://github.com/your-org/provenance-graph-sbom-linker/issues)
+- 📧 Email: supply-chain@danieleschmidt.com
+- 💬 Discord: [Join our community](https://discord.gg/danieleschmidt)
+- 📖 Documentation: [Full docs](https://docs.danieleschmidt.com/provenance-linker)
+- 🎓 Training: [Supply Chain Security Course](https://learn.danieleschmidt.com/supply-chain)
+- 🐛 Issues: [GitHub Issues](https://github.com/danieleschmidt/provenance-graph-sbom-linker/issues)
