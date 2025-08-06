@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/api"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/config"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/database"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/version"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/api"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version"
 )
 
 func main() {

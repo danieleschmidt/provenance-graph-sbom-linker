@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/config"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/database"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/handlers"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/middleware"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/handlers"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/middleware"
 )
 
 func SetupRoutes(db *database.Neo4jDB, cfg *config.Config) *gin.Engine {
