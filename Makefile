@@ -5,7 +5,7 @@
 # =============================================================================
 PROJECT_NAME := provenance-graph-sbom-linker
 BINARY_NAME := provenance-linker
-MODULE_NAME := github.com/your-org/provenance-graph-sbom-linker
+MODULE_NAME := github.com/danieleschmidt/provenance-graph-sbom-linker
 
 # Go
 GO := go
@@ -23,7 +23,7 @@ COVERAGE_DIR := coverage
 # Docker
 DOCKER := docker
 DOCKER_COMPOSE := docker-compose
-REGISTRY := ghcr.io/your-org
+REGISTRY := ghcr.io/danieleschmidt
 IMAGE_NAME := $(REGISTRY)/$(PROJECT_NAME)
 
 # Kubernetes

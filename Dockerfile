@@ -34,18 +34,18 @@ ARG COMMIT=unknown
 ARG DATE=unknown
 
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Version=${VERSION} \
-              -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Commit=${COMMIT} \
-              -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Date=${DATE}" \
+    -ldflags="-w -s -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Version=${VERSION} \
+              -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Commit=${COMMIT} \
+              -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Date=${DATE}" \
     -a -installsuffix cgo \
     -o /bin/provenance-linker \
     ./cmd/server
 
 # Build CLI tool
 RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-    -ldflags="-w -s -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Version=${VERSION} \
-              -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Commit=${COMMIT} \
-              -X github.com/your-org/provenance-graph-sbom-linker/internal/version.Date=${DATE}" \
+    -ldflags="-w -s -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Version=${VERSION} \
+              -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Commit=${COMMIT} \
+              -X github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Date=${DATE}" \
     -a -installsuffix cgo \
     -o /bin/provenance-cli \
     ./cmd/cli
@@ -229,7 +229,7 @@ LABEL org.opencontainers.image.vendor="Your Organization"
 LABEL org.opencontainers.image.version="${VERSION}"
 LABEL org.opencontainers.image.revision="${COMMIT}"
 LABEL org.opencontainers.image.created="${DATE}"
-LABEL org.opencontainers.image.source="https://github.com/your-org/provenance-graph-sbom-linker"
+LABEL org.opencontainers.image.source="https://github.com/danieleschmidt/provenance-graph-sbom-linker"
 LABEL org.opencontainers.image.documentation="https://docs.your-org.com/provenance-linker"
 LABEL org.opencontainers.image.licenses="MIT"
 

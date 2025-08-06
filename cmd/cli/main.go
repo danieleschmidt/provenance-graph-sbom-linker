@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/cli"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/version"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/cli"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version"
 )
 
 func main() {
