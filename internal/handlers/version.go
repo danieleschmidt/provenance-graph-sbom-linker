@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/your-org/provenance-graph-sbom-linker/internal/version"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version"
 )
 
 type VersionHandler struct{}

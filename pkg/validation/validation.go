@@ -11,10 +11,10 @@ import (
 )
 
 type Validator struct {
-	errors []ValidationError
+	errors []BasicValidationError
 }
 
-type ValidationError struct {
+type BasicValidationError struct {
 	Field   string `json:"field"`
 	Message string `json:"message"`
 	Code    string `json:"code"`
@@ -22,12 +22,12 @@ type ValidationError struct {
 
 func NewValidator() *Validator {
 	return &Validator{
-		errors: make([]ValidationError, 0),
+		errors: make([]BasicValidationError, 0),
 	}
 }
 
 func (v *Validator) AddError(field, message, code string) {
-	v.errors = append(v.errors, ValidationError{
+	v.errors = append(v.errors, BasicValidationError{
 		Field:   field,
 		Message: message,
 		Code:    code,
@@ -38,7 +38,7 @@ func (v *Validator) HasErrors() bool {
 	return len(v.errors) > 0
 }
 
-func (v *Validator) GetErrors() []ValidationError {
+func (v *Validator) GetErrors() []BasicValidationError {
 	return v.errors
 }
 
@@ -233,6 +233,37 @@ func isValidVersion(version string) bool {
 }
 
 func isValidHash(hash string) bool {
+	// Allow common hash formats with prefixes
+	if strings.Contains(hash, ":") {
+		parts := strings.SplitN(hash, ":", 2)
+		if len(parts) != 2 {
+			return false
+		}
+		algorithm := parts[0]
+		hashValue := parts[1]
+		
+		// Check if algorithm is valid
+		validAlgorithms := []string{"sha256", "sha1", "md5", "sha512"}
+		validAlgorithm := false
+		for _, alg := range validAlgorithms {
+			if algorithm == alg {
+				validAlgorithm = true
+				break
+			}
+		}
+		if !validAlgorithm {
+			return false
+		}
+		
+		// Validate hash value
+		if len(hashValue) < 32 || len(hashValue) > 128 {
+			return false
+		}
+		hashRegex := regexp.MustCompile(`^[a-fA-F0-9]+$`)
+		return hashRegex.MatchString(hashValue)
+	}
+	
+	// Plain hash without prefix
 	if len(hash) < 32 || len(hash) > 128 {
 		return false
 	}

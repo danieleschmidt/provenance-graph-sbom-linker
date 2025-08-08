@@ -34,7 +34,7 @@ func SetupRoutes(db *database.Neo4jDB, cfg *config.Config) *gin.Engine {
 		
 		artifacts := api.Group("/artifacts")
 		{
-			artifactHandler := handlers.NewArtifactHandler(db)
+			artifactHandler := handlers.NewArtifactHandler(handlers.NewNeo4jDBAdapter(db))
 			artifacts.POST("", artifactHandler.CreateArtifact)
 			artifacts.GET("/:id", artifactHandler.GetArtifact)
 			artifacts.GET("", artifactHandler.ListArtifacts)

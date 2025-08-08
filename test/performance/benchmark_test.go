@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/your-org/provenance-graph-sbom-linker/test/testutil"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/test/testutil"
 )
 
 // BenchmarkSBOMParsing benchmarks SBOM parsing performance

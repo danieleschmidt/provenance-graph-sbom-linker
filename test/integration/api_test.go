@@ -18,7 +18,6 @@ import (
 	
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/api"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/types"
 )
 
 type APITestSuite struct {
@@ -165,7 +164,7 @@ func (suite *APITestSuite) TestConcurrentRequests() {
 
 	for i := 0; i < numWorkers; i++ {
 		go func() {
-			for j := range jobs {
+			for range jobs {
 				req, err := http.NewRequest("GET", "/health", nil)
 				if err != nil {
 					results <- http.StatusInternalServerError

@@ -449,7 +449,7 @@ func TestValidator_ValidationErrorDetails(t *testing.T) {
 	
 	assert.Len(t, errors, 3)
 	
-	errorMap := make(map[string]ValidationError)
+	errorMap := make(map[string]BasicValidationError)
 	for _, err := range errors {
 		errorMap[err.Field] = err
 	}
