@@ -38,8 +38,17 @@ type TestDB struct {
 	config *TestConfig
 }
 
+// THelper interface for both testing.T and testing.B
+type THelper interface {
+	Helper()
+	Cleanup(func())
+	Fatalf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
+	FailNow()
+}
+
 // NewTestDB creates a new test database connection
-func NewTestDB(t *testing.T) *TestDB {
+func NewTestDB(t THelper) *TestDB {
 	t.Helper()
 	
 	config := DefaultTestConfig()
@@ -88,7 +97,7 @@ func (db *TestDB) Session(ctx context.Context) neo4j.SessionWithContext {
 }
 
 // clearTestData removes all test data from the database
-func (db *TestDB) clearTestData(t *testing.T) {
+func (db *TestDB) clearTestData(t THelper) {
 	t.Helper()
 	
 	ctx, cancel := context.WithTimeout(context.Background(), db.config.TestTimeout)

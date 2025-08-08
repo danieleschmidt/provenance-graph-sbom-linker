@@ -1,0 +1,16 @@
+{
+  "provenance": {
+    "build": {
+      "system": "local"
+    },
+    "created_at": "2025-08-08T15:19:19Z",
+    "project": "test-project",
+    "sources": [
+      {
+        "type": "git",
+        "url": "."
+      }
+    ],
+    "version": "1.0"
+  }
+}

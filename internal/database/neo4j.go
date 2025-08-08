@@ -175,6 +175,109 @@ func (db *Neo4jDB) CreateProvenanceLink(ctx context.Context, fromID, toID string
 	return err
 }
 
+func (db *Neo4jDB) CreateSource(ctx context.Context, source *types.Source) error {
+	session := db.driver.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	query := `
+		CREATE (s:Source {
+			id: $id,
+			type: $type,
+			url: $url,
+			branch: $branch,
+			commit_hash: $commit_hash,
+			tag: $tag,
+			created_at: $created_at
+		})
+		RETURN s
+	`
+
+	params := map[string]interface{}{
+		"id":          source.ID.String(),
+		"type":        string(source.Type),
+		"url":         source.URL,
+		"branch":      source.Branch,
+		"commit_hash": source.CommitHash,
+		"tag":         source.Tag,
+		"created_at":  source.CreatedAt.Unix(),
+	}
+
+	_, err := session.Run(ctx, query, params)
+	return err
+}
+
+func (db *Neo4jDB) CreateBuildEvent(ctx context.Context, build *types.BuildEvent) error {
+	session := db.driver.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	query := `
+		CREATE (b:Build {
+			id: $id,
+			source_ref: $source_ref,
+			commit_hash: $commit_hash,
+			build_id: $build_id,
+			build_system: $build_system,
+			build_url: $build_url,
+			timestamp: $timestamp
+		})
+		RETURN b
+	`
+
+	params := map[string]interface{}{
+		"id":           build.ID.String(),
+		"source_ref":   build.SourceRef,
+		"commit_hash":  build.CommitHash,
+		"build_id":     build.BuildID,
+		"build_system": build.BuildSystem,
+		"build_url":    build.BuildURL,
+		"timestamp":    build.Timestamp.Unix(),
+	}
+
+	_, err := session.Run(ctx, query, params)
+	return err
+}
+
+func (db *Neo4jDB) GetProvenanceGraph(ctx context.Context, artifactID string, depth int) (*types.ProvenanceGraph, error) {
+	session := db.driver.NewSession(ctx, neo4j.SessionConfig{})
+	defer session.Close(ctx)
+
+	query := `
+		MATCH path = (a:Artifact {id: $artifactID})-[*0..` + fmt.Sprintf("%d", depth) + `]-()
+		RETURN nodes(path) as nodes, relationships(path) as edges
+	`
+
+	result, err := session.Run(ctx, query, map[string]interface{}{"artifactID": artifactID})
+	if err != nil {
+		return nil, err
+	}
+
+	graph := &types.ProvenanceGraph{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		Metadata:  make(map[string]string),
+		Nodes:     []types.Node{},
+		Edges:     []types.Edge{},
+	}
+
+	for result.Next(ctx) {
+		record := result.Record()
+		if nodes, ok := record.Get("nodes"); ok {
+			for _, node := range nodes.([]interface{}) {
+				n := node.(neo4j.Node)
+				graph.Nodes = append(graph.Nodes, types.Node{
+					ID:       n.Props["id"].(string),
+					Type:     types.NodeType(n.Labels[0]),
+					Label:    fmt.Sprintf("%s", n.Props["name"]),
+					Data:     n.Props,
+					Metadata: make(map[string]string),
+				})
+			}
+		}
+	}
+
+	return graph, nil
+}
+
 func parseUUID(s string) uuid.UUID {
 	if uid, err := uuid.Parse(s); err == nil {
 		return uid

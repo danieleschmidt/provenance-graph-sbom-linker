@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/api"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"

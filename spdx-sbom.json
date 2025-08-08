@@ -1,0 +1,22 @@
+{
+  "id": "a0ea3c2c-02fd-4bad-b9ae-f9d88e4ebffd",
+  "format": "spdx",
+  "version": "1.0",
+  "created_at": "2025-08-08T15:28:07.494884151Z",
+  "created_by": "provenance-linker",
+  "components": [
+    {
+      "id": "fbf8b24e-0909-4347-8c41-5a6019f77c79",
+      "name": "example-component",
+      "version": "1.0.0",
+      "type": "library",
+      "license": [
+        "MIT"
+      ],
+      "description": "Example component for demonstration",
+      "metadata": {}
+    }
+  ],
+  "metadata": {},
+  "hash": ""
+}
