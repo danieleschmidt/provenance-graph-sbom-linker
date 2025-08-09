@@ -8,15 +8,26 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/logger"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/types"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/validation"
 )
 
 type ProvenanceHandler struct {
-	db *database.Neo4jDB
+	db        *database.Neo4jDB
+	logger    *logger.StructuredLogger
+	validator *validation.SecurityValidator
 }
 
 func NewProvenanceHandler(db *database.Neo4jDB) *ProvenanceHandler {
-	return &ProvenanceHandler{db: db}
+	log := logger.NewStructuredLogger("info", "json")
+	validator := validation.NewSecurityValidator([]string{}, []string{})
+	
+	return &ProvenanceHandler{
+		db:        db,
+		logger:    log,
+		validator: validator,
+	}
 }
 
 func (h *ProvenanceHandler) GetProvenance(c *gin.Context) {

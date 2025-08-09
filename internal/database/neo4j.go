@@ -13,6 +13,7 @@ import (
 
 type Neo4jDB struct {
 	driver neo4j.DriverWithContext
+	config *config.DatabaseConfig
 }
 
 func NewNeo4jConnection(cfg config.DatabaseConfig) (*Neo4jDB, error) {
@@ -30,7 +31,10 @@ func NewNeo4jConnection(cfg config.DatabaseConfig) (*Neo4jDB, error) {
 		return nil, fmt.Errorf("failed to verify Neo4j connectivity: %w", err)
 	}
 
-	db := &Neo4jDB{driver: driver}
+	db := &Neo4jDB{
+		driver: driver,
+		config: &cfg,
+	}
 	if err := db.InitializeSchema(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}

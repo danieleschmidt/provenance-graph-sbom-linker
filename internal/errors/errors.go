@@ -3,6 +3,7 @@ package errors
 import (
 	"fmt"
 	"net/http"
+	"runtime"
 )
 
 // ErrorCode represents different types of errors
@@ -271,4 +272,22 @@ func (ec *ErrorChain) ToResponse() interface{} {
 	return map[string]interface{}{
 		"errors": responses,
 	}
+}
+
+// Utility function for stack trace (used in enhanced error handling)
+func getStackTrace() string {
+	const depth = 32
+	var pcs [depth]uintptr
+	n := runtime.Callers(3, pcs[:])
+	frames := runtime.CallersFrames(pcs[:n])
+	
+	var stack string
+	for {
+		frame, more := frames.Next()
+		stack += fmt.Sprintf("%s:%d %s\n", frame.File, frame.Line, frame.Function)
+		if !more {
+			break
+		}
+	}
+	return stack
 }

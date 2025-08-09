@@ -1,12 +1,12 @@
 {
-  "id": "50900b05-a59e-432f-b291-7749691d0f75",
+  "id": "65a92a44-3631-4321-9007-cce695caef07",
   "format": "cyclonedx",
   "version": "1.0",
-  "created_at": "2025-08-09T22:15:21.888993666Z",
+  "created_at": "2025-08-09T22:20:37.932496903Z",
   "created_by": "provenance-linker",
   "components": [
     {
-      "id": "fac437dd-c54e-4a46-b2b5-78b9cbb98082",
+      "id": "1ec86ffb-20b3-4f73-8dfb-dd48380f15f4",
       "name": "example-component",
       "version": "1.0.0",
       "type": "library",
