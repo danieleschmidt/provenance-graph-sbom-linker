@@ -425,3 +425,47 @@ func contains(slice []string, item string) bool {
 	}
 	return false
 }
+
+// Additional validation methods for Generation 2
+func (v *SecurityValidator) isValidArtifactName(name string) bool {
+	// Artifact names should follow container naming conventions
+	pattern := regexp.MustCompile(`^[a-z0-9]+([._-][a-z0-9]+)*$`)
+	return pattern.MatchString(name)
+}
+
+func (v *SecurityValidator) isValidVersion(version string) bool {
+	// Support semantic versioning and other common formats
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`^\d+\.\d+\.\d+$`),                    // Semantic versioning
+		regexp.MustCompile(`^\d+\.\d+\.\d+-[a-zA-Z0-9.-]+$`),   // Pre-release
+		regexp.MustCompile(`^v\d+\.\d+\.\d+$`),                 // v-prefixed
+		regexp.MustCompile(`^(latest|main|master)$`),              // Special versions
+		regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9.-]{0,127}$`),  // General format
+	}
+	
+	for _, pattern := range patterns {
+		if pattern.MatchString(version) {
+			return true
+		}
+	}
+	return false
+}
+
+func (v *SecurityValidator) isValidHash(hash string) bool {
+	// Support various hash formats
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`^sha256:[a-fA-F0-9]{64}$`),
+		regexp.MustCompile(`^sha1:[a-fA-F0-9]{40}$`),
+		regexp.MustCompile(`^md5:[a-fA-F0-9]{32}$`),
+		regexp.MustCompile(`^[a-fA-F0-9]{32}$`),   // MD5
+		regexp.MustCompile(`^[a-fA-F0-9]{40}$`),   // SHA1
+		regexp.MustCompile(`^[a-fA-F0-9]{64}$`),   // SHA256
+	}
+	
+	for _, pattern := range patterns {
+		if pattern.MatchString(hash) {
+			return true
+		}
+	}
+	return false
+}
