@@ -1,3 +1,4 @@
+```go
 module github.com/danieleschmidt/provenance-graph-sbom-linker
 
 go 1.23.0
@@ -6,7 +7,7 @@ toolchain go1.23.12
 
 require (
 	github.com/gin-gonic/gin v1.10.1
-	github.com/golang-jwt/jwt/v5 v5.2.2
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/neo4j/neo4j-go-driver/v5 v5.24.0
 	github.com/redis/go-redis/v9 v9.6.3
@@ -71,3 +72,4 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+```
