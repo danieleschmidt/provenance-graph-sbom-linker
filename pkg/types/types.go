@@ -6,6 +6,11 @@ import (
 	"github.com/google/uuid"
 )
 
+// ParseUUID safely parses a UUID string
+func ParseUUID(s string) (uuid.UUID, error) {
+	return uuid.Parse(s)
+}
+
 type Artifact struct {
 	ID           uuid.UUID          `json:"id" neo4j:"id"`
 	Name         string             `json:"name" neo4j:"name"`

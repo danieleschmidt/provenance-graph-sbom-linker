@@ -1,0 +1,22 @@
+{
+  "id": "3a9df2f1-0dfa-4ca5-934d-bc90e7ed9ca2",
+  "format": "cyclonedx",
+  "version": "1.0",
+  "created_at": "2025-08-11T05:16:28.334245306Z",
+  "created_by": "provenance-linker",
+  "components": [
+    {
+      "id": "e4225d92-a379-4ef7-8df1-4fe7e9bd7740",
+      "name": "example-component",
+      "version": "1.0.0",
+      "type": "library",
+      "license": [
+        "MIT"
+      ],
+      "description": "Example component for demonstration",
+      "metadata": {}
+    }
+  ],
+  "metadata": {},
+  "hash": ""
+}

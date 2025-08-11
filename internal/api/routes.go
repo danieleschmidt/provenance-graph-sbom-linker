@@ -1,8 +1,6 @@
 package api
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
@@ -20,13 +18,15 @@ func SetupRoutes(db *database.Neo4jDB, cfg *config.Config) *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS(cfg.Security.CORSOrigins))
 	router.Use(middleware.Security())
+	router.Use(middleware.RateLimiter())
+	router.Use(middleware.RequestSizeLimit(10 * 1024 * 1024)) // 10MB limit
 
-	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "healthy",
-			"service": "provenance-graph-sbom-linker",
-		})
-	})
+	// Health and observability endpoints
+	healthHandler := handlers.NewHealthHandler(db)
+	router.GET("/health", healthHandler.HealthCheck)
+	router.GET("/health/ready", healthHandler.ReadinessCheck)
+	router.GET("/health/live", healthHandler.LivenessCheck)
+	router.GET("/metrics", healthHandler.MetricsHandler)
 
 	api := router.Group("/api/v1")
 	{
