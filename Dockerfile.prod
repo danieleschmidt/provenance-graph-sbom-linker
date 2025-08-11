@@ -1,0 +1,85 @@
+# Multi-stage production Dockerfile for Provenance Linker
+FROM golang:1.23.12-bullseye AS builder
+
+# Install security updates and build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for building
+RUN groupadd -r builduser && useradd -r -g builduser builduser
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY go.mod go.sum ./
+
+# Download dependencies with verification
+RUN go mod download && go mod verify
+
+# Copy source code
+COPY . .
+
+# Change ownership to builduser
+RUN chown -R builduser:builduser /app
+USER builduser
+
+# Build optimized binaries
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Version=1.0.0' \
+              -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Commit=${GIT_COMMIT:-unknown}' \
+              -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Date=${BUILD_DATE:-unknown}'" \
+    -a -installsuffix cgo \
+    -o bin/provenance-server ./cmd/server
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Version=1.0.0' \
+              -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Commit=${GIT_COMMIT:-unknown}' \
+              -X 'github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version.Date=${BUILD_DATE:-unknown}'" \
+    -a -installsuffix cgo \
+    -o bin/provenance-linker ./cmd/cli
+
+# Production stage
+FROM scratch
+
+# Import certificates and timezone data
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
+
+# Create non-root user
+COPY --from=builder /etc/passwd /etc/passwd
+COPY --from=builder /etc/group /etc/group
+
+# Copy binaries
+COPY --from=builder --chown=builduser:builduser /app/bin/provenance-server /usr/local/bin/provenance-server
+COPY --from=builder --chown=builduser:builduser /app/bin/provenance-linker /usr/local/bin/provenance-linker
+
+# Copy configuration
+COPY --from=builder --chown=builduser:builduser /app/config/config.example.yaml /etc/provenance-linker/config.yaml
+
+# Create data directory
+COPY --from=builder --chown=builduser:builduser /app/. /data/
+USER builduser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD ["/usr/local/bin/provenance-server", "health-check"] || exit 1
+
+# Metadata
+LABEL org.opencontainers.image.title="Provenance Graph SBOM Linker" \
+      org.opencontainers.image.description="End-to-end software supply chain provenance tracker with cryptographic attestation" \
+      org.opencontainers.image.version="1.0.0" \
+      org.opencontainers.image.authors="Terragon Labs <contact@danieleschmidt.com>" \
+      org.opencontainers.image.source="https://github.com/danieleschmidt/provenance-graph-sbom-linker" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.documentation="https://docs.danieleschmidt.com/provenance-linker"
+
+# Expose port
+EXPOSE 8080
+
+# Default command
+ENTRYPOINT ["/usr/local/bin/provenance-server"]
+CMD []
