@@ -165,6 +165,16 @@ const (
 	AttestationTypeSBOM      AttestationType = "https://in-toto.io/attestation/sbom/v1"
 )
 
+// VerificationResult represents the result of artifact verification
+type VerificationResult struct {
+	ID         uuid.UUID         `json:"id"`
+	Artifact   string            `json:"artifact"`
+	Verified   bool              `json:"verified"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Signatures []Signature       `json:"signatures"`
+	Metadata   map[string]string `json:"metadata"`
+}
+
 type Subject struct {
 	Name   string            `json:"name" neo4j:"name"`
 	Digest map[string]string `json:"digest" neo4j:"digest"`
@@ -241,6 +251,7 @@ type EdgeType string
 
 const (
 	EdgeTypeBuiltFrom   EdgeType = "built_from"
+	EdgeTypeProduces    EdgeType = "produces"
 	EdgeTypeDeployedTo  EdgeType = "deployed_to"
 	EdgeTypeDependsOn   EdgeType = "depends_on"
 	EdgeTypeContains    EdgeType = "contains"
@@ -265,9 +276,10 @@ type ComplianceReport struct {
 type ComplianceStandard string
 
 const (
-	ComplianceStandardNISTSSDF ComplianceStandard = "nist-ssdf"
-	ComplianceStandardEUCRA    ComplianceStandard = "eu-cra"
-	ComplianceStandardCustom   ComplianceStandard = "custom"
+	ComplianceStandardNISTSSDF      ComplianceStandard = "nist-ssdf"
+	ComplianceStandardNISTSSDFv11   ComplianceStandard = "nist-ssdf-v1.1"
+	ComplianceStandardEUCRA         ComplianceStandard = "eu-cra"
+	ComplianceStandardCustom        ComplianceStandard = "custom"
 )
 
 type ComplianceStatus string

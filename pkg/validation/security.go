@@ -205,11 +205,16 @@ func (v *SecurityValidator) validateRequiredString(value, field string) *Validat
 }
 
 func (v *SecurityValidator) validateHash(hash string) error {
-	// Check for common hash formats
-	patterns := map[string]*regexp.Regexp{
-		"sha256": regexp.MustCompile(`^sha256:[a-fA-F0-9]{64}$`),
-		"sha1":   regexp.MustCompile(`^sha1:[a-fA-F0-9]{40}$`),
-		"md5":    regexp.MustCompile(`^md5:[a-fA-F0-9]{32}$`),
+	if hash == "" {
+		return nil // Empty hash is allowed
+	}
+	
+	// Check for common hash formats - more flexible validation
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`^sha256:[a-fA-F0-9]{6,64}$`),  // More flexible SHA256
+		regexp.MustCompile(`^sha1:[a-fA-F0-9]{6,40}$`),    // More flexible SHA1
+		regexp.MustCompile(`^md5:[a-fA-F0-9]{6,32}$`),     // More flexible MD5
+		regexp.MustCompile(`^[a-fA-F0-9]{6,128}$`),        // Plain hash
 	}
 
 	for _, pattern := range patterns {

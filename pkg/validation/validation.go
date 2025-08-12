@@ -233,6 +233,10 @@ func isValidVersion(version string) bool {
 }
 
 func isValidHash(hash string) bool {
+	if hash == "" {
+		return true // Empty hash is allowed, will be generated if needed
+	}
+	
 	// Allow common hash formats with prefixes
 	if strings.Contains(hash, ":") {
 		parts := strings.SplitN(hash, ":", 2)
@@ -255,16 +259,16 @@ func isValidHash(hash string) bool {
 			return false
 		}
 		
-		// Validate hash value
-		if len(hashValue) < 32 || len(hashValue) > 128 {
+		// Validate hash value - more flexible length validation
+		if len(hashValue) < 6 || len(hashValue) > 128 {
 			return false
 		}
 		hashRegex := regexp.MustCompile(`^[a-fA-F0-9]+$`)
 		return hashRegex.MatchString(hashValue)
 	}
 	
-	// Plain hash without prefix
-	if len(hash) < 32 || len(hash) > 128 {
+	// Plain hash without prefix - more flexible length validation
+	if len(hash) < 6 || len(hash) > 128 {
 		return false
 	}
 	

@@ -1,0 +1,48 @@
+{
+  "id": "251fc0e5-e774-424c-b798-8d621b855c87",
+  "standard": "nist-ssdf-v1.1",
+  "project_name": "test-project",
+  "version": "1.0",
+  "status": "partial",
+  "score": 85.5,
+  "requirements": [
+    {
+      "id": "PO.1.1",
+      "title": "Stakeholder Identification",
+      "description": "Identify and document all stakeholders",
+      "status": "compliant",
+      "evidence": [
+        "stakeholder-matrix.md"
+      ],
+      "details": "All stakeholders documented in project documentation",
+      "score": 100
+    },
+    {
+      "id": "PO.1.2",
+      "title": "Vendor Documentation",
+      "description": "Identify and document all vendors/suppliers",
+      "status": "partial",
+      "evidence": [
+        "vendor-list.json"
+      ],
+      "details": "Some third-party dependencies not fully documented",
+      "score": 75
+    },
+    {
+      "id": "PS.1.1",
+      "title": "Secure Development Environment",
+      "description": "Use a well-secured software development environment",
+      "status": "compliant",
+      "evidence": [
+        "ci-cd-security.md",
+        "access-controls.json"
+      ],
+      "details": "Secure development environment with proper access controls",
+      "score": 95
+    }
+  ],
+  "evidence": null,
+  "generated_at": "2025-08-12T22:02:19.872681367Z",
+  "generated_by": "provenance-linker",
+  "metadata": {}
+}
