@@ -3,291 +3,234 @@ package errors
 import (
 	"fmt"
 	"net/http"
-	"runtime"
-)
+	"time"
 
-// ErrorCode represents different types of errors
-type ErrorCode string
-
-const (
-	// General errors
-	ErrCodeInternal      ErrorCode = "INTERNAL_ERROR"
-	ErrCodeInvalidInput  ErrorCode = "INVALID_INPUT"
-	ErrCodeNotFound      ErrorCode = "NOT_FOUND"
-	ErrCodeUnauthorized  ErrorCode = "UNAUTHORIZED"
-	ErrCodeForbidden     ErrorCode = "FORBIDDEN"
-	ErrCodeConflict      ErrorCode = "CONFLICT"
-	ErrCodeTimeout       ErrorCode = "TIMEOUT"
-
-	// Validation errors
-	ErrCodeValidation       ErrorCode = "VALIDATION_ERROR"
-	ErrCodeMaliciousContent ErrorCode = "MALICIOUS_CONTENT"
-	ErrCodeUnsafeOperation  ErrorCode = "UNSAFE_OPERATION"
-
-	// Database errors
-	ErrCodeDatabaseConnection ErrorCode = "DATABASE_CONNECTION"
-	ErrCodeDatabaseQuery      ErrorCode = "DATABASE_QUERY"
-	ErrCodeDatabaseConstraint ErrorCode = "DATABASE_CONSTRAINT"
-
-	// External service errors
-	ErrCodeExternalService ErrorCode = "EXTERNAL_SERVICE"
-	ErrCodeNetworkError    ErrorCode = "NETWORK_ERROR"
-
-	// Authentication/Authorization errors
-	ErrCodeInvalidToken   ErrorCode = "INVALID_TOKEN"
-	ErrCodeExpiredToken   ErrorCode = "EXPIRED_TOKEN"
-	ErrCodeInsufficientPermissions ErrorCode = "INSUFFICIENT_PERMISSIONS"
-
-	// Business logic errors
-	ErrCodeInvalidArtifact     ErrorCode = "INVALID_ARTIFACT"
-	ErrCodeInvalidSBOM         ErrorCode = "INVALID_SBOM"
-	ErrCodeInvalidProvenance   ErrorCode = "INVALID_PROVENANCE"
-	ErrCodeSignatureVerification ErrorCode = "SIGNATURE_VERIFICATION"
+	"github.com/google/uuid"
 )
 
 // AppError represents a structured application error
 type AppError struct {
-	Code       ErrorCode              `json:"code"`
-	Message    string                 `json:"message"`
-	Details    string                 `json:"details,omitempty"`
-	StatusCode int                    `json:"-"`
-	Internal   error                  `json:"-"`
-	Context    map[string]interface{} `json:"context,omitempty"`
+	ID         string            `json:"id"`
+	Type       string            `json:"type"`
+	Message    string            `json:"message"`
+	Details    string            `json:"details,omitempty"`
+	StatusCode int               `json:"status_code"`
+	Timestamp  time.Time         `json:"timestamp"`
+	Context    map[string]string `json:"context,omitempty"`
+	Cause      error             `json:"-"`
 }
 
+// Error implements the error interface
 func (e *AppError) Error() string {
 	if e.Details != "" {
-		return fmt.Sprintf("%s: %s (%s)", e.Code, e.Message, e.Details)
+		return fmt.Sprintf("%s: %s (%s)", e.Type, e.Message, e.Details)
 	}
-	return fmt.Sprintf("%s: %s", e.Code, e.Message)
+	return fmt.Sprintf("%s: %s", e.Type, e.Message)
 }
 
-func (e *AppError) Unwrap() error {
-	return e.Internal
-}
-
-func (e *AppError) WithContext(key string, value interface{}) *AppError {
+// WithContext adds contextual information to the error
+func (e *AppError) WithContext(key, value string) *AppError {
 	if e.Context == nil {
-		e.Context = make(map[string]interface{})
+		e.Context = make(map[string]string)
 	}
 	e.Context[key] = value
 	return e
 }
 
-func (e *AppError) WithDetails(details string) *AppError {
-	e.Details = details
-	return e
-}
-
-// Error constructors
-func NewInternalError(message string, err error) *AppError {
-	return &AppError{
-		Code:       ErrCodeInternal,
-		Message:    message,
-		StatusCode: http.StatusInternalServerError,
-		Internal:   err,
-	}
-}
-
-func NewValidationError(message string, details string) *AppError {
-	return &AppError{
-		Code:       ErrCodeValidation,
-		Message:    message,
-		Details:    details,
-		StatusCode: http.StatusBadRequest,
-	}
-}
-
-func NewNotFoundError(resource string, id string) *AppError {
-	return &AppError{
-		Code:       ErrCodeNotFound,
-		Message:    fmt.Sprintf("%s not found", resource),
-		Details:    fmt.Sprintf("ID: %s", id),
-		StatusCode: http.StatusNotFound,
-	}
-}
-
-func NewUnauthorizedError(message string) *AppError {
-	return &AppError{
-		Code:       ErrCodeUnauthorized,
-		Message:    message,
-		StatusCode: http.StatusUnauthorized,
-	}
-}
-
-func NewForbiddenError(message string) *AppError {
-	return &AppError{
-		Code:       ErrCodeForbidden,
-		Message:    message,
-		StatusCode: http.StatusForbidden,
-	}
-}
-
-func NewConflictError(message string, details string) *AppError {
-	return &AppError{
-		Code:       ErrCodeConflict,
-		Message:    message,
-		Details:    details,
-		StatusCode: http.StatusConflict,
-	}
-}
-
-func NewDatabaseError(operation string, err error) *AppError {
-	return &AppError{
-		Code:       ErrCodeDatabaseQuery,
-		Message:    fmt.Sprintf("Database operation failed: %s", operation),
-		StatusCode: http.StatusInternalServerError,
-		Internal:   err,
-	}
-}
-
-func NewExternalServiceError(service string, err error) *AppError {
-	return &AppError{
-		Code:       ErrCodeExternalService,
-		Message:    fmt.Sprintf("External service error: %s", service),
-		StatusCode: http.StatusBadGateway,
-		Internal:   err,
-	}
-}
-
-func NewMaliciousContentError(field string) *AppError {
-	return &AppError{
-		Code:       ErrCodeMaliciousContent,
-		Message:    "Potentially malicious content detected",
-		Details:    fmt.Sprintf("Field: %s", field),
-		StatusCode: http.StatusBadRequest,
-	}
-}
-
-func NewSignatureVerificationError(reason string) *AppError {
-	return &AppError{
-		Code:       ErrCodeSignatureVerification,
-		Message:    "Signature verification failed",
-		Details:    reason,
-		StatusCode: http.StatusUnprocessableEntity,
-	}
-}
-
-// IsErrorCode checks if an error matches a specific error code
-func IsErrorCode(err error, code ErrorCode) bool {
-	appErr, ok := err.(*AppError)
-	if !ok {
-		return false
-	}
-	return appErr.Code == code
-}
-
-// GetErrorCode returns the error code from an error, or empty string if not an AppError
-func GetErrorCode(err error) ErrorCode {
-	appErr, ok := err.(*AppError)
-	if !ok {
-		return ""
-	}
-	return appErr.Code
-}
-
-// GetStatusCode returns the HTTP status code for an error
-func GetStatusCode(err error) int {
-	appErr, ok := err.(*AppError)
-	if !ok {
-		return http.StatusInternalServerError
-	}
-	return appErr.StatusCode
-}
-
-// ErrorResponse represents the JSON error response format
-type ErrorResponse struct {
-	Error ErrorDetail `json:"error"`
-}
-
-type ErrorDetail struct {
-	Code    ErrorCode              `json:"code"`
-	Message string                 `json:"message"`
-	Details string                 `json:"details,omitempty"`
-	Context map[string]interface{} `json:"context,omitempty"`
-}
-
-// ToResponse converts an AppError to an ErrorResponse
-func (e *AppError) ToResponse() ErrorResponse {
-	return ErrorResponse{
-		Error: ErrorDetail{
-			Code:    e.Code,
-			Message: e.Message,
-			Details: e.Details,
-			Context: e.Context,
+// ToResponse converts the error to a JSON response format
+func (e *AppError) ToResponse() map[string]interface{} {
+	response := map[string]interface{}{
+		"error": map[string]interface{}{
+			"id":        e.ID,
+			"type":      e.Type,
+			"message":   e.Message,
+			"timestamp": e.Timestamp,
 		},
 	}
-}
 
-// FromError converts any error to an AppError
-func FromError(err error) *AppError {
-	if appErr, ok := err.(*AppError); ok {
-		return appErr
+	if e.Details != "" {
+		response["error"].(map[string]interface{})["details"] = e.Details
 	}
-	
-	return NewInternalError("An unexpected error occurred", err)
-}
 
-// Chain multiple errors together
-type ErrorChain struct {
-	errors []*AppError
-}
-
-func NewErrorChain() *ErrorChain {
-	return &ErrorChain{
-		errors: make([]*AppError, 0),
+	if len(e.Context) > 0 {
+		response["error"].(map[string]interface{})["context"] = e.Context
 	}
+
+	return response
 }
 
-func (ec *ErrorChain) Add(err *AppError) *ErrorChain {
-	ec.errors = append(ec.errors, err)
-	return ec
-}
-
-func (ec *ErrorChain) HasErrors() bool {
-	return len(ec.errors) > 0
-}
-
-func (ec *ErrorChain) Errors() []*AppError {
-	return ec.errors
-}
-
-func (ec *ErrorChain) First() *AppError {
-	if len(ec.errors) == 0 {
-		return nil
-	}
-	return ec.errors[0]
-}
-
-func (ec *ErrorChain) ToResponse() interface{} {
-	if len(ec.errors) == 1 {
-		return ec.errors[0].ToResponse()
-	}
-	
-	responses := make([]ErrorResponse, len(ec.errors))
-	for i, err := range ec.errors {
-		responses[i] = err.ToResponse()
-	}
-	
-	return map[string]interface{}{
-		"errors": responses,
+// NewValidationError creates a new validation error
+func NewValidationError(message, details string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "validation_error",
+		Message:    message,
+		Details:    details,
+		StatusCode: http.StatusBadRequest,
+		Timestamp:  time.Now(),
+		Context:    make(map[string]string),
 	}
 }
 
-// Utility function for stack trace (used in enhanced error handling)
-func getStackTrace() string {
-	const depth = 32
-	var pcs [depth]uintptr
-	n := runtime.Callers(3, pcs[:])
-	frames := runtime.CallersFrames(pcs[:n])
-	
-	var stack string
-	for {
-		frame, more := frames.Next()
-		stack += fmt.Sprintf("%s:%d %s\n", frame.File, frame.Line, frame.Function)
-		if !more {
-			break
-		}
+// NewNotFoundError creates a new not found error
+func NewNotFoundError(resource, id string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "not_found_error",
+		Message:    fmt.Sprintf("%s not found", resource),
+		Details:    fmt.Sprintf("Resource '%s' with ID '%s' does not exist", resource, id),
+		StatusCode: http.StatusNotFound,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"resource": resource, "resource_id": id},
 	}
-	return stack
+}
+
+// NewDatabaseError creates a new database error
+func NewDatabaseError(operation string, cause error) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "database_error",
+		Message:    "Database operation failed",
+		Details:    fmt.Sprintf("Operation '%s' failed", operation),
+		StatusCode: http.StatusInternalServerError,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"operation": operation},
+		Cause:      cause,
+	}
+}
+
+// NewAuthenticationError creates a new authentication error
+func NewAuthenticationError(message string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "authentication_error",
+		Message:    message,
+		Details:    "Authentication credentials are invalid or missing",
+		StatusCode: http.StatusUnauthorized,
+		Timestamp:  time.Now(),
+		Context:    make(map[string]string),
+	}
+}
+
+// NewAuthorizationError creates a new authorization error
+func NewAuthorizationError(resource, action string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "authorization_error",
+		Message:    "Insufficient permissions",
+		Details:    fmt.Sprintf("User not authorized to %s %s", action, resource),
+		StatusCode: http.StatusForbidden,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"resource": resource, "action": action},
+	}
+}
+
+// NewRateLimitError creates a new rate limit error
+func NewRateLimitError(retryAfter int) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "rate_limit_error",
+		Message:    "Rate limit exceeded",
+		Details:    fmt.Sprintf("Too many requests. Retry after %d seconds", retryAfter),
+		StatusCode: http.StatusTooManyRequests,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"retry_after": fmt.Sprintf("%d", retryAfter)},
+	}
+}
+
+// NewInternalError creates a new internal server error
+func NewInternalError(component string, cause error) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "internal_error",
+		Message:    "Internal server error",
+		Details:    fmt.Sprintf("Error in component '%s'", component),
+		StatusCode: http.StatusInternalServerError,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"component": component},
+		Cause:      cause,
+	}
+}
+
+// NewServiceUnavailableError creates a new service unavailable error
+func NewServiceUnavailableError(service string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "service_unavailable_error",
+		Message:    "Service temporarily unavailable",
+		Details:    fmt.Sprintf("Service '%s' is currently unavailable", service),
+		StatusCode: http.StatusServiceUnavailable,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"service": service},
+	}
+}
+
+// NewConflictError creates a new conflict error
+func NewConflictError(resource, reason string) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "conflict_error",
+		Message:    "Resource conflict",
+		Details:    fmt.Sprintf("Conflict with resource '%s': %s", resource, reason),
+		StatusCode: http.StatusConflict,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"resource": resource, "reason": reason},
+	}
+}
+
+// NewTimeoutError creates a new timeout error
+func NewTimeoutError(operation string, timeout time.Duration) *AppError {
+	return &AppError{
+		ID:         uuid.New().String(),
+		Type:       "timeout_error",
+		Message:    "Operation timeout",
+		Details:    fmt.Sprintf("Operation '%s' timed out after %v", operation, timeout),
+		StatusCode: http.StatusRequestTimeout,
+		Timestamp:  time.Now(),
+		Context:    map[string]string{"operation": operation, "timeout": timeout.String()},
+	}
+}
+
+// Error types for categorization
+const (
+	ErrorTypeValidation      = "validation_error"
+	ErrorTypeNotFound        = "not_found_error"
+	ErrorTypeDatabase        = "database_error"
+	ErrorTypeAuthentication  = "authentication_error"
+	ErrorTypeAuthorization   = "authorization_error"
+	ErrorTypeRateLimit       = "rate_limit_error"
+	ErrorTypeInternal        = "internal_error"
+	ErrorTypeServiceUnavail  = "service_unavailable_error"
+	ErrorTypeConflict        = "conflict_error"
+	ErrorTypeTimeout         = "timeout_error"
+)
+
+// ValidationResult represents the result of input validation
+type ValidationResult struct {
+	Valid  bool              `json:"valid"`
+	Errors []ValidationError `json:"errors"`
+}
+
+// ValidationError represents a single validation error
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Value   string `json:"value,omitempty"`
+}
+
+// ErrorHandler middleware for centralized error handling
+func ErrorHandler() func(c interface{}, err error) {
+	return func(c interface{}, err error) {
+		// This would be implemented to handle different error types
+		// and respond with appropriate HTTP status codes and messages
+	}
+}
+
+// RecoveryHandler handles panics and converts them to internal errors
+func RecoveryHandler() func(c interface{}, err interface{}) {
+	return func(c interface{}, err interface{}) {
+		// Convert panic to internal error
+		// Log the error and stack trace
+		// Return appropriate error response
+	}
 }

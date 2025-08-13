@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/errors"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/logger"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/types"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/validation"
@@ -20,71 +21,96 @@ type ProvenanceHandler struct {
 }
 
 func NewProvenanceHandler(db *database.Neo4jDB) *ProvenanceHandler {
-	log := logger.NewStructuredLogger("info", "json")
-	validator := validation.NewSecurityValidator([]string{}, []string{})
-	
 	return &ProvenanceHandler{
 		db:        db,
-		logger:    log,
-		validator: validator,
+		logger:    logger.NewStructuredLogger("info", "json"),
+		validator: validation.NewSecurityValidator([]string{}, []string{}),
 	}
 }
 
 func (h *ProvenanceHandler) GetProvenance(c *gin.Context) {
+	ctx := c.Request.Context()
+	start := time.Now()
+
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID parameter is required"})
+		appErr := errors.NewValidationError("ID parameter is required", "")
+		c.JSON(appErr.StatusCode, appErr.ToResponse())
 		return
 	}
 
-	ctx := context.Background()
-	artifact, err := h.db.GetArtifact(ctx, id)
+	// Validate UUID format
+	if _, err := uuid.Parse(id); err != nil {
+		appErr := errors.NewValidationError("Invalid UUID format", err.Error())
+		c.JSON(appErr.StatusCode, appErr.ToResponse())
+		return
+	}
+
+	// Get depth parameter (default 5)
+	depth := 5
+	if depthStr := c.Query("depth"); depthStr != "" {
+		if parsedDepth, err := strconv.Atoi(depthStr); err == nil && parsedDepth > 0 && parsedDepth <= 20 {
+			depth = parsedDepth
+		}
+	}
+
+	graph, err := h.db.GetProvenanceGraph(ctx, id, depth)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
+		appErr := errors.NewNotFoundError("Provenance graph", id)
+		h.logger.LogError(ctx, appErr, "get_provenance", map[string]interface{}{
+			"artifact_id": id,
+			"depth":       depth,
+		})
+		c.JSON(appErr.StatusCode, appErr.ToResponse())
 		return
 	}
 
-	graph := &types.ProvenanceGraph{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		Metadata:  make(map[string]string),
-		Nodes: []types.Node{
-			{
-				ID:       artifact.ID.String(),
-				Type:     types.NodeTypeArtifact,
-				Label:    artifact.Name + ":" + artifact.Version,
-				Data:     artifact,
-				Metadata: make(map[string]string),
-			},
-		},
-		Edges: []types.Edge{},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"provenance": graph,
-		"message":    "Provenance graph generated",
+	// Log performance
+	h.logger.Performance("get_provenance", time.Since(start), map[string]interface{}{
+		"artifact_id": id,
+		"depth":       depth,
+		"nodes":       len(graph.Nodes),
+		"edges":       len(graph.Edges),
 	})
+
+	c.JSON(http.StatusOK, graph)
 }
 
 func (h *ProvenanceHandler) TrackBuild(c *gin.Context) {
+	ctx := c.Request.Context()
+	start := time.Now()
+
 	var req struct {
-		SourceRef    string            `json:"source_ref" binding:"required"`
-		CommitHash   string            `json:"commit_hash" binding:"required"`
-		BuildSystem  string            `json:"build_system"`
-		BuildURL     string            `json:"build_url"`
-		Artifacts    []types.Artifact  `json:"artifacts" binding:"required"`
-		Metadata     map[string]string `json:"metadata"`
+		SourceRef    string               `json:"source_ref" binding:"required"`
+		CommitHash   string               `json:"commit_hash" binding:"required"`
+		BuildID      string               `json:"build_id"`
+		BuildSystem  string               `json:"build_system"`
+		BuildURL     string               `json:"build_url"`
+		Artifacts    []types.Artifact     `json:"artifacts" binding:"required"`
+		Metadata     map[string]string    `json:"metadata"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		appErr := errors.NewValidationError("Invalid request format", err.Error())
+		h.logger.LogError(ctx, appErr, "bind_request", map[string]interface{}{
+			"operation": "track_build",
+			"client_ip": c.ClientIP(),
+		})
+		c.JSON(appErr.StatusCode, appErr.ToResponse())
 		return
 	}
 
+	// Sanitize inputs
+	req.SourceRef = h.validator.SanitizeInput(req.SourceRef)
+	req.CommitHash = h.validator.SanitizeInput(req.CommitHash)
+	req.BuildSystem = h.validator.SanitizeInput(req.BuildSystem)
+
+	// Create build event
 	buildEvent := &types.BuildEvent{
 		ID:          uuid.New(),
 		SourceRef:   req.SourceRef,
 		CommitHash:  req.CommitHash,
+		BuildID:     req.BuildID,
 		BuildSystem: req.BuildSystem,
 		BuildURL:    req.BuildURL,
 		Artifacts:   req.Artifacts,
@@ -96,23 +122,85 @@ func (h *ProvenanceHandler) TrackBuild(c *gin.Context) {
 		buildEvent.Metadata = make(map[string]string)
 	}
 
-	ctx := context.Background()
-	for _, artifact := range buildEvent.Artifacts {
+	// Create build event in database
+	if err := h.db.CreateBuildEvent(ctx, buildEvent); err != nil {
+		appErr := errors.NewDatabaseError("create_build_event", err)
+		h.logger.LogError(ctx, appErr, "database_operation", map[string]interface{}{
+			"build_id":    buildEvent.ID.String(),
+			"source_ref":  buildEvent.SourceRef,
+			"commit_hash": buildEvent.CommitHash,
+		})
+		c.JSON(appErr.StatusCode, appErr.ToResponse())
+		return
+	}
+
+	// Create source if needed
+	source := &types.Source{
+		ID:         uuid.New(),
+		Type:       types.SourceTypeGit,
+		URL:        req.SourceRef,
+		Branch:     "main", // Default, could be parsed from source_ref
+		CommitHash: req.CommitHash,
+		CreatedAt:  time.Now(),
+		Metadata:   make(map[string]string),
+	}
+
+	if err := h.db.CreateSource(ctx, source); err != nil {
+		h.logger.LogError(ctx, errors.NewDatabaseError("create_source", err), "database_operation", map[string]interface{}{
+			"source_id": source.ID.String(),
+			"url":       source.URL,
+		})
+		// Continue despite source creation failure
+	}
+
+	// Create artifacts and link them to the build
+	for i := range buildEvent.Artifacts {
+		artifact := &buildEvent.Artifacts[i]
 		if artifact.ID == (uuid.UUID{}) {
 			artifact.ID = uuid.New()
 		}
 		if artifact.CreatedAt.IsZero() {
 			artifact.CreatedAt = time.Now()
+		}
+		if artifact.UpdatedAt.IsZero() {
 			artifact.UpdatedAt = time.Now()
 		}
-		if err := h.db.CreateArtifact(ctx, &artifact); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store artifact"})
-			return
+
+		if err := h.db.CreateArtifact(ctx, artifact); err != nil {
+			h.logger.LogError(ctx, errors.NewDatabaseError("create_artifact", err), "database_operation", map[string]interface{}{
+				"artifact_id":   artifact.ID.String(),
+				"artifact_name": artifact.Name,
+			})
+			// Continue with other artifacts
+			continue
+		}
+
+		// Create provenance link from build to artifact
+		if err := h.db.CreateProvenanceLink(ctx, buildEvent.ID.String(), artifact.ID.String(), "PRODUCES"); err != nil {
+			h.logger.LogError(ctx, errors.NewDatabaseError("create_provenance_link", err), "database_operation", map[string]interface{}{
+				"build_id":     buildEvent.ID.String(),
+				"artifact_id":  artifact.ID.String(),
+			})
 		}
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"build_event": buildEvent,
-		"message":     "Build tracking completed",
+	// Log successful build tracking
+	h.logger.Performance("track_build", time.Since(start), map[string]interface{}{
+		"build_id":      buildEvent.ID.String(),
+		"artifacts_count": len(buildEvent.Artifacts),
+		"source_ref":    buildEvent.SourceRef,
 	})
+
+	h.logger.Audit("track_build", c.GetString("user_id"), buildEvent.ID.String(), true, map[string]interface{}{
+		"source_ref":  buildEvent.SourceRef,
+		"commit_hash": buildEvent.CommitHash,
+		"build_system": buildEvent.BuildSystem,
+	})
+
+	c.JSON(http.StatusCreated, buildEvent)
+}
+
+func (h *ProvenanceHandler) GetProvenanceGraph(c *gin.Context) {
+	// Alias for GetProvenance for backward compatibility
+	h.GetProvenance(c)
 }

@@ -57,7 +57,7 @@ func (rv *RequestValidator) ValidateRequest() gin.HandlerFunc {
 		// Validate User-Agent
 		userAgent := c.GetHeader("User-Agent")
 		if rv.isBotUserAgent(userAgent) {
-			appErr := errors.NewForbiddenError("Access denied for automated clients")
+			appErr := errors.NewAuthorizationError("access", "Access denied for automated clients")
 			c.JSON(appErr.StatusCode, appErr.ToResponse())
 			c.Abort()
 			return
@@ -73,7 +73,7 @@ func (rv *RequestValidator) ValidateRequest() gin.HandlerFunc {
 
 		// Validate request headers for security
 		if rv.hasBlockedHeaders(c) {
-			appErr := errors.NewForbiddenError("Blocked headers detected")
+			appErr := errors.NewAuthorizationError("headers", "Blocked headers detected")
 			c.JSON(appErr.StatusCode, appErr.ToResponse())
 			c.Abort()
 			return
@@ -152,7 +152,7 @@ func (rv *RequestValidator) validateJSONContent(c *gin.Context) *errors.AppError
 	// Check for potentially dangerous content
 	bodyStr := string(body)
 	if rv.containsSuspiciousContent(bodyStr) {
-		return errors.NewMaliciousContentError("request_body")
+		return errors.NewValidationError("Malicious content detected", "request_body")
 	}
 
 	return nil
@@ -256,7 +256,7 @@ func HostHeaderValidator(allowedHosts []string) gin.HandlerFunc {
 		}
 
 		if !hostAllowed && len(allowedHosts) > 0 {
-			appErr := errors.NewForbiddenError("Host not allowed")
+			appErr := errors.NewAuthorizationError("host", "Host not allowed")
 			c.JSON(appErr.StatusCode, appErr.ToResponse())
 			c.Abort()
 			return
@@ -273,7 +273,7 @@ func QueryParameterValidator() gin.HandlerFunc {
 		for param, values := range c.Request.URL.Query() {
 			for _, value := range values {
 				if containsInjection(param) || containsInjection(value) {
-					appErr := errors.NewMaliciousContentError("query_parameters")
+					appErr := errors.NewValidationError("Invalid query parameters", "query_parameters")
 					c.JSON(appErr.StatusCode, appErr.ToResponse())
 					c.Abort()
 					return
