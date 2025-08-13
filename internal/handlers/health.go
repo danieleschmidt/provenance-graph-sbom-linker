@@ -74,11 +74,11 @@ func (h *HealthHandler) HealthCheck(c *gin.Context) {
 	}
 
 	// Log health check
-	h.logger.WithFields(map[string]interface{}{
+	h.logger.Info("Health check completed", map[string]interface{}{
 		"status":    overallStatus,
 		"checks":    len(checks),
 		"operation": "health_check",
-	}).Info("Health check performed")
+	})
 
 	statusCode := http.StatusOK
 	if overallStatus != "healthy" {
