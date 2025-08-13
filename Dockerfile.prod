@@ -1,5 +1,5 @@
 # Multi-stage production Dockerfile for Provenance Linker
-FROM golang:1.23.12-bullseye AS builder
+FROM golang:1.24.6-bullseye AS builder
 
 # Install security updates and build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
