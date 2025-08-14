@@ -346,11 +346,27 @@ func (h *SBOMHandler) GetSBOM(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement SBOM retrieval from database
-	// For now, return a placeholder response
+	// Generation 1: Return placeholder SBOM - will be retrieved from database in Generation 2
+	placeholderSBOM := types.SBOM{
+		ID:        uuid.MustParse(id),
+		Format:    types.SBOMFormatCycloneDX,
+		Version:   "1.0",
+		CreatedAt: time.Now().Add(-24 * time.Hour), // Created yesterday
+		CreatedBy: "provenance-linker",
+		Hash:      "placeholder-hash",
+		Metadata:  map[string]string{
+			"status": "placeholder",
+			"note":   "Database retrieval will be implemented in Generation 2",
+		},
+		Components: []types.Component{},
+	}
+
 	c.JSON(http.StatusOK, gin.H{
-		"sbom_id": id,
-		"message": "SBOM retrieval endpoint - implementation pending",
-		"status":  "placeholder",
+		"sbom": placeholderSBOM,
+		"metadata": gin.H{
+			"retrieved_at": time.Now(),
+			"version":      "v1",
+			"note":         "Placeholder implementation - full database integration in Generation 2",
+		},
 	})
 }

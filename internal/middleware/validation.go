@@ -304,24 +304,4 @@ func containsInjection(input string) bool {
 	return false
 }
 
-// RequestIDMiddleware adds unique request ID for tracing
-func RequestIDMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		requestID := c.GetHeader("X-Request-ID")
-		if requestID == "" {
-			requestID = generateRequestID()
-		}
-		
-		c.Header("X-Request-ID", requestID)
-		c.Set("request_id", requestID)
-		c.Next()
-	}
-}
-
-// generateRequestID generates a unique request ID
-func generateRequestID() string {
-	// Simple implementation - in production, use a proper UUID library
-	return "req_" + strings.ReplaceAll(strings.ReplaceAll(
-		strings.ReplaceAll(string(make([]byte, 16)), "\x00", "a"), 
-		"\x01", "b"), "\x02", "c")
-}
+// Note: RequestIDMiddleware moved to metrics.go to avoid duplication

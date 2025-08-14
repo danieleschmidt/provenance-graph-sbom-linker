@@ -6,23 +6,40 @@ import (
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/database"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/handlers"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/middleware"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/monitoring"
+	pkgErrors "github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/errors"
 )
 
-func SetupRoutes(db *database.Neo4jDB, cfg *config.Config) *gin.Engine {
+func SetupRoutes(db *database.Neo4jDB, cfg *config.Config, metricsCollector *monitoring.MetricsCollector, recoveryHandler *pkgErrors.RecoveryHandler) *gin.Engine {
+	// Initialize defaults if not provided
+	if metricsCollector == nil {
+		metricsCollector = monitoring.NewMetricsCollector()
+	}
 	if cfg.Server.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.New()
+	
+	// Create middleware instances
+	metricsMiddleware := middleware.NewMetricsMiddleware(metricsCollector)
+	
+	// Apply middleware in order
 	router.Use(gin.Logger())
-	router.Use(gin.Recovery())
+	if recoveryHandler != nil {
+		router.Use(recoveryHandler.GinRecoveryMiddleware())
+	} else {
+		router.Use(gin.Recovery())
+	}
+	router.Use(middleware.RequestIDMiddleware())
+	router.Use(metricsMiddleware.CollectMetrics())
 	router.Use(middleware.CORS(cfg.Security.CORSOrigins))
 	router.Use(middleware.Security())
 	router.Use(middleware.RateLimiter())
 	router.Use(middleware.RequestSizeLimit(10 * 1024 * 1024)) // 10MB limit
 
 	// Health and observability endpoints
-	healthHandler := handlers.NewHealthHandler(db)
+	healthHandler := handlers.NewHealthHandler(db, metricsCollector)
 	router.GET("/health", healthHandler.HealthCheck)
 	router.GET("/health/ready", healthHandler.ReadinessCheck)
 	router.GET("/health/live", healthHandler.LivenessCheck)
