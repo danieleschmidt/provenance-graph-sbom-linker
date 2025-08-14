@@ -229,18 +229,12 @@ func (h *ArtifactHandler) ListArtifacts(c *gin.Context) {
 		}
 	}
 
-	// TODO: Replace with actual database query
-	artifacts := []types.Artifact{
-		{
-			ID:        uuid.New(),
-			Name:      "example-artifact",
-			Version:   "1.0.0",
-			Type:      types.ArtifactTypeContainer,
-			CreatedAt: time.Now().Add(-24 * time.Hour),
-			UpdatedAt: time.Now(),
-			Metadata:  make(map[string]string),
-		},
-	}
+	// Generation 1: Return empty list - will be populated from database in Generation 2
+	artifacts := []types.Artifact{}
+	
+	// If we have a database connection, we could query here
+	// For now, return empty result to make the endpoint functional
+	totalCount := len(artifacts)
 
 	// Log performance
 	h.logger.Performance("list_artifacts", time.Since(start), map[string]interface{}{
@@ -251,7 +245,7 @@ func (h *ArtifactHandler) ListArtifacts(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"artifacts": artifacts,
-		"total":     len(artifacts),
+		"total":     totalCount,
 		"limit":     limit,
 		"offset":    offset,
 		"metadata": gin.H{
