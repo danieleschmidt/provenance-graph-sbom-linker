@@ -1,0 +1,54 @@
+{
+  "id": "e80ba5ab-fba0-4b32-a9d0-0df9f57dadd4",
+  "nodes": [
+    {
+      "id": "source-1",
+      "type": "source",
+      "label": "GitHub Repository",
+      "data": {
+        "url": "https://github.com/org/repo"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "build-1",
+      "type": "build",
+      "label": "CI Build #123",
+      "data": {
+        "build_id": "123",
+        "status": "success"
+      },
+      "metadata": {}
+    },
+    {
+      "id": "artifact-1",
+      "type": "artifact",
+      "label": "Container Image",
+      "data": {
+        "name": "my-app:v1.0.0",
+        "size": 1024000
+      },
+      "metadata": {}
+    }
+  ],
+  "edges": [
+    {
+      "id": "256adbb1-e575-4372-9e03-13e6a344c4ab",
+      "from": "source-1",
+      "to": "build-1",
+      "type": "built_from",
+      "label": "triggers",
+      "metadata": {}
+    },
+    {
+      "id": "0a5c6aab-3cb6-41a7-a4c5-d52c5e2a3338",
+      "from": "build-1",
+      "to": "artifact-1",
+      "type": "produces",
+      "label": "produces",
+      "metadata": {}
+    }
+  ],
+  "metadata": {},
+  "created_at": "2025-08-17T01:27:21.665490424Z"
+}
