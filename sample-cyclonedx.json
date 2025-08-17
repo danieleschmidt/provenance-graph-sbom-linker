@@ -1,0 +1,54 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-08-17T01:30:00Z",
+    "tools": [
+      {
+        "vendor": "CycloneDX",
+        "name": "cyclonedx-cli",
+        "version": "0.24.0"
+      }
+    ]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "gin-v1.10.1",
+      "name": "gin-gonic/gin",
+      "version": "v1.10.1",
+      "description": "Gin is a HTTP web framework written in Go",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/gin-gonic/gin@v1.10.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "abc123def456"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "neo4j-v5.24.0",
+      "name": "neo4j/neo4j-go-driver",
+      "version": "v5.24.0",
+      "description": "Neo4j driver for Go",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/neo4j/neo4j-go-driver/v5@v5.24.0"
+    }
+  ]
+}

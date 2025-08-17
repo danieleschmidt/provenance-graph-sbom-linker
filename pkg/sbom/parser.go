@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,6 +64,129 @@ func (p *Parser) DetectFormat(data []byte) (types.SBOMFormat, error) {
 	}
 
 	return "", fmt.Errorf("unable to detect SBOM format")
+}
+
+// ParseCycloneDX parses CycloneDX format SBOM from data
+func (p *Parser) ParseCycloneDX(data []byte) (*types.SBOM, error) {
+	var cycloneDX struct {
+		BOMFormat   string `json:"bomFormat"`
+		SpecVersion string `json:"specVersion"`
+		SerialNumber string `json:"serialNumber"`
+		Version     int    `json:"version"`
+		Metadata    struct {
+			Timestamp string `json:"timestamp"`
+			Tools     []struct {
+				Vendor  string `json:"vendor"`
+				Name    string `json:"name"`
+				Version string `json:"version"`
+			} `json:"tools"`
+		} `json:"metadata"`
+		Components []struct {
+			Type        string `json:"type"`
+			BomRef      string `json:"bom-ref"`
+			Name        string `json:"name"`
+			Version     string `json:"version"`
+			Description string `json:"description"`
+			Licenses    []struct {
+				License struct {
+					Name string `json:"name"`
+					ID   string `json:"id"`
+				} `json:"license"`
+			} `json:"licenses"`
+			Purl     string `json:"purl"`
+			Hashes   []struct {
+				Alg     string `json:"alg"`
+				Content string `json:"content"`
+			} `json:"hashes"`
+		} `json:"components"`
+		Dependencies []struct {
+			Ref       string   `json:"ref"`
+			DependsOn []string `json:"dependsOn"`
+		} `json:"dependencies"`
+	}
+
+	if err := json.Unmarshal(data, &cycloneDX); err != nil {
+		return nil, fmt.Errorf("failed to parse CycloneDX SBOM: %w", err)
+	}
+
+	// Parse timestamp
+	createdAt := time.Now()
+	if cycloneDX.Metadata.Timestamp != "" {
+		if parsed, err := time.Parse(time.RFC3339, cycloneDX.Metadata.Timestamp); err == nil {
+			createdAt = parsed
+		}
+	}
+
+	// Convert components
+	components := make([]types.Component, 0, len(cycloneDX.Components))
+	for _, comp := range cycloneDX.Components {
+		licenses := make([]string, 0, len(comp.Licenses))
+		for _, license := range comp.Licenses {
+			if license.License.ID != "" {
+				licenses = append(licenses, license.License.ID)
+			} else if license.License.Name != "" {
+				licenses = append(licenses, license.License.Name)
+			}
+		}
+
+		hash := ""
+		if len(comp.Hashes) > 0 {
+			hash = comp.Hashes[0].Content
+		}
+
+		componentType := types.ComponentTypeLibrary
+		switch comp.Type {
+		case "application":
+			componentType = types.ComponentTypeApplication
+		case "framework":
+			componentType = types.ComponentTypeFramework
+		case "library":
+			componentType = types.ComponentTypeLibrary
+		case "container":
+			componentType = types.ComponentTypeContainer
+		case "file":
+			componentType = types.ComponentTypeFile
+		case "operating-system":
+			componentType = types.ComponentTypeOS
+		}
+
+		components = append(components, types.Component{
+			ID:          uuid.New(),
+			Name:        comp.Name,
+			Version:     comp.Version,
+			Type:        componentType,
+			License:     licenses,
+			Hash:        hash,
+			Description: comp.Description,
+			Metadata: map[string]string{
+				"bom-ref": comp.BomRef,
+				"purl":    comp.Purl,
+			},
+		})
+	}
+
+	// Parse created by info
+	createdBy := "unknown"
+	if len(cycloneDX.Metadata.Tools) > 0 {
+		tool := cycloneDX.Metadata.Tools[0]
+		createdBy = fmt.Sprintf("%s %s %s", tool.Vendor, tool.Name, tool.Version)
+		createdBy = strings.TrimSpace(createdBy)
+	}
+
+	return &types.SBOM{
+		ID:         uuid.New(),
+		Format:     types.SBOMFormatCycloneDX,
+		Version:    cycloneDX.SpecVersion,
+		CreatedAt:  createdAt,
+		CreatedBy:  createdBy,
+		Components: components,
+		Metadata: map[string]string{
+			"serial_number": cycloneDX.SerialNumber,
+			"version":       fmt.Sprintf("%d", cycloneDX.Version),
+			"format":        cycloneDX.BOMFormat,
+		},
+		Serialized: data,
+	}, nil
 }
 
 // parseCycloneDX parses CycloneDX format SBOM
