@@ -62,7 +62,7 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/arch v0.8.0 // indirect
+	golang.org/x/arch v0.20.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.38.0 // indirect
