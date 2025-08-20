@@ -2,7 +2,7 @@
 # =============================================================================
 
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Security: Create non-root user
 RUN adduser -D -s /bin/sh -u 1001 appuser
@@ -112,7 +112,7 @@ CMD ["--config", "/app/config/config.yaml"]
 
 # =============================================================================
 # Development stage
-FROM golang:1.24-alpine AS development
+FROM golang:1.25-alpine AS development
 
 # Install development tools
 RUN apk add --no-cache \
@@ -146,7 +146,7 @@ CMD ["air", "-c", ".air.toml"]
 
 # =============================================================================
 # Testing stage
-FROM golang:1.24-alpine AS testing
+FROM golang:1.25-alpine AS testing
 
 # Install test dependencies
 RUN apk add --no-cache \
