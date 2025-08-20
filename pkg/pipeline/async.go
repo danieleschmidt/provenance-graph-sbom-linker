@@ -3,12 +3,10 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/memory"
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/types"
 )
 
 // PipelineStage represents a single stage in the processing pipeline
@@ -89,7 +87,6 @@ type AsyncPipeline struct {
 	outputChan  chan *ProcessingResult
 	workers     []*PipelineWorker
 	metrics     *PipelineMetrics
-	memPool     *memory.PoolManager
 	ctx         context.Context
 	cancel      context.CancelFunc
 	wg          sync.WaitGroup
@@ -97,7 +94,7 @@ type AsyncPipeline struct {
 }
 
 // NewAsyncPipeline creates a new async processing pipeline
-func NewAsyncPipeline(config PipelineConfig, stages []PipelineStage, memPool *memory.PoolManager) *AsyncPipeline {
+func NewAsyncPipeline(config PipelineConfig, stages []PipelineStage) *AsyncPipeline {
 	ctx, cancel := context.WithCancel(context.Background())
 	
 	pipeline := &AsyncPipeline{
@@ -109,14 +106,13 @@ func NewAsyncPipeline(config PipelineConfig, stages []PipelineStage, memPool *me
 		metrics: &PipelineMetrics{
 			StartTime: time.Now(),
 		},
-		memPool: memPool,
 		ctx:     ctx,
 		cancel:  cancel,
 	}
 
 	// Start workers
 	for i := 0; i < config.WorkerCount; i++ {
-		worker := NewPipelineWorker(i, pipeline.inputChan, pipeline.outputChan, stages, config, memPool)
+		worker := NewPipelineWorker(i, pipeline.inputChan, pipeline.outputChan, stages, config)
 		pipeline.workers[i] = worker
 		pipeline.wg.Add(1)
 		go worker.Start(ctx, &pipeline.wg)
@@ -270,11 +266,8 @@ func (p *AsyncPipeline) updateMetrics() {
 	}
 	p.metrics.ActiveWorkers = activeWorkers
 	
-	// Update memory usage if memory pool manager is available
-	if p.memPool != nil {
-		gcStats := memory.GetGCStats()
-		p.metrics.MemoryUsage = int64(gcStats.MemoryStats.HeapInuse)
-	}
+	// Update memory usage (placeholder for now)
+	p.metrics.MemoryUsage = 0
 }
 
 // memoryMonitor monitors memory usage and triggers GC if needed
@@ -285,9 +278,10 @@ func (p *AsyncPipeline) memoryMonitor() {
 	for {
 		select {
 		case <-ticker.C:
-			gcStats := memory.GetGCStats()
-			if int64(gcStats.MemoryStats.HeapInuse) > p.config.MaxMemoryUsage {
-				memory.TriggerGC()
+			var stats runtime.MemStats
+			runtime.ReadMemStats(&stats)
+			if int64(stats.HeapInuse) > p.config.MaxMemoryUsage {
+				runtime.GC()
 			}
 		case <-p.ctx.Done():
 			return
@@ -298,24 +292,22 @@ func (p *AsyncPipeline) memoryMonitor() {
 // PipelineWorker processes items through the pipeline stages
 type PipelineWorker struct {
 	id         int
-	inputChan  <-chan *PipelineItem
+	inputChan  chan *PipelineItem
 	outputChan chan<- *ProcessingResult
 	stages     []PipelineStage
 	config     PipelineConfig
-	memPool    *memory.PoolManager
 	active     int64
 }
 
 // NewPipelineWorker creates a new pipeline worker
-func NewPipelineWorker(id int, inputChan <-chan *PipelineItem, outputChan chan<- *ProcessingResult, 
-	stages []PipelineStage, config PipelineConfig, memPool *memory.PoolManager) *PipelineWorker {
+func NewPipelineWorker(id int, inputChan chan *PipelineItem, outputChan chan<- *ProcessingResult, 
+	stages []PipelineStage, config PipelineConfig) *PipelineWorker {
 	return &PipelineWorker{
 		id:         id,
 		inputChan:  inputChan,
 		outputChan: outputChan,
 		stages:     stages,
 		config:     config,
-		memPool:    memPool,
 	}
 }
 
