@@ -1,0 +1,312 @@
+# Advanced Metrics Configuration for Provenance Graph SBOM Linker
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: provenance-metrics-config
+  namespace: provenance-system
+data:
+  metrics.yaml: |
+    # Application-specific metrics
+    application_metrics:
+      # SBOM processing metrics
+      sbom_processing:
+        - name: sbom_parsed_total
+          type: counter
+          description: "Total number of SBOMs parsed"
+          labels: ["format", "source", "size_category"]
+        - name: sbom_parsing_duration_seconds
+          type: histogram
+          description: "Time taken to parse SBOMs"
+          buckets: [0.1, 0.5, 1.0, 2.5, 5.0, 10.0]
+          labels: ["format", "source"]
+        - name: sbom_components_discovered
+          type: gauge
+          description: "Number of components discovered in SBOMs"
+          labels: ["format", "ecosystem"]
+        - name: sbom_vulnerabilities_found
+          type: gauge
+          description: "Number of vulnerabilities found in components"
+          labels: ["severity", "ecosystem"]
+
+      # Provenance tracking metrics
+      provenance_tracking:
+        - name: artifacts_tracked_total
+          type: counter
+          description: "Total number of artifacts tracked"
+          labels: ["type", "source", "verified"]
+        - name: provenance_graph_nodes
+          type: gauge
+          description: "Number of nodes in provenance graph"
+          labels: ["node_type"]
+        - name: provenance_graph_edges
+          type: gauge
+          description: "Number of edges in provenance graph"
+          labels: ["edge_type"]
+        - name: build_events_processed_total
+          type: counter
+          description: "Total number of build events processed"
+          labels: ["build_system", "status"]
+
+      # Compliance metrics
+      compliance_tracking:
+        - name: compliance_score
+          type: gauge
+          description: "Compliance score percentage"
+          labels: ["standard", "project"]
+        - name: compliance_requirements_total
+          type: gauge
+          description: "Total compliance requirements"
+          labels: ["standard", "status"]
+        - name: compliance_violations_total
+          type: counter
+          description: "Total compliance violations found"
+          labels: ["standard", "severity"]
+
+      # Signature verification metrics
+      signature_verification:
+        - name: signatures_verified_total
+          type: counter
+          description: "Total signatures verified"
+          labels: ["algorithm", "result"]
+        - name: signature_verification_duration_seconds
+          type: histogram
+          description: "Time taken to verify signatures"
+          buckets: [0.01, 0.05, 0.1, 0.5, 1.0, 2.0]
+          labels: ["algorithm"]
+        - name: cosign_signatures_valid
+          type: gauge
+          description: "Number of valid Cosign signatures"
+        - name: certificate_expiry_days
+          type: gauge
+          description: "Days until certificate expiry"
+          labels: ["certificate_type"]
+
+    # Infrastructure metrics
+    infrastructure_metrics:
+      # Database performance
+      database_performance:
+        - name: neo4j_queries_total
+          type: counter
+          description: "Total Neo4j queries executed"
+          labels: ["query_type", "status"]
+        - name: neo4j_query_duration_seconds
+          type: histogram
+          description: "Neo4j query execution time"
+          buckets: [0.001, 0.01, 0.1, 0.5, 1.0, 5.0]
+          labels: ["query_type"]
+        - name: neo4j_connections_active
+          type: gauge
+          description: "Active Neo4j connections"
+        - name: redis_operations_total
+          type: counter
+          description: "Total Redis operations"
+          labels: ["operation", "status"]
+
+      # Performance metrics
+      performance:
+        - name: response_time_seconds
+          type: histogram
+          description: "HTTP response time"
+          buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
+          labels: ["method", "endpoint", "status"]
+        - name: concurrent_requests
+          type: gauge
+          description: "Number of concurrent requests being processed"
+        - name: memory_pool_usage_bytes
+          type: gauge
+          description: "Memory pool usage in bytes"
+          labels: ["pool_type"]
+        - name: gc_collections_total
+          type: counter
+          description: "Total garbage collections"
+
+    # Security metrics
+    security_metrics:
+      access_control:
+        - name: authentication_attempts_total
+          type: counter
+          description: "Total authentication attempts"
+          labels: ["method", "result"]
+        - name: authorization_checks_total
+          type: counter
+          description: "Total authorization checks"
+          labels: ["resource", "result"]
+        - name: rate_limit_exceeded_total
+          type: counter
+          description: "Rate limit exceeded events"
+          labels: ["endpoint", "client_ip"]
+        - name: suspicious_activity_total
+          type: counter
+          description: "Suspicious activity detected"
+          labels: ["activity_type", "severity"]
+
+    # Business metrics
+    business_metrics:
+      supply_chain:
+        - name: supply_chain_visibility_score
+          type: gauge
+          description: "Supply chain visibility score"
+          labels: ["project", "component_type"]
+        - name: time_to_compliance_hours
+          type: histogram
+          description: "Time to achieve compliance"
+          buckets: [1, 8, 24, 72, 168, 720]
+          labels: ["standard"]
+        - name: security_incidents_prevented_total
+          type: counter
+          description: "Security incidents prevented"
+          labels: ["incident_type", "severity"]
+        - name: cost_savings_dollars
+          type: gauge
+          description: "Estimated cost savings from early detection"
+          labels: ["savings_type"]
+
+  alerts.yaml: |
+    # Alerting rules for provenance system
+    groups:
+      - name: provenance.rules
+        rules:
+          # High error rate
+          - alert: HighErrorRate
+            expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High error rate detected"
+              description: "Error rate is above 10% for 5 minutes"
+
+          # SBOM processing failures
+          - alert: SBOMProcessingFailures
+            expr: rate(sbom_parsing_errors_total[5m]) > 0.05
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "SBOM processing failures detected"
+              description: "SBOM parsing error rate is above 5%"
+
+          # Compliance score drop
+          - alert: ComplianceScoreDrop
+            expr: decrease(compliance_score[1h]) > 10
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Compliance score dropped significantly"
+              description: "Compliance score dropped by more than 10 points in the last hour"
+
+          # Database performance
+          - alert: SlowDatabaseQueries
+            expr: histogram_quantile(0.95, neo4j_query_duration_seconds) > 5
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Slow database queries detected"
+              description: "95th percentile query time is above 5 seconds"
+
+          # Memory usage
+          - alert: HighMemoryUsage
+            expr: memory_pool_usage_bytes / memory_pool_total_bytes > 0.9
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High memory usage"
+              description: "Memory usage is above 90%"
+
+          # Certificate expiry
+          - alert: CertificateExpiringSoon
+            expr: certificate_expiry_days < 30
+            for: 0m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Certificate expiring soon"
+              description: "Certificate expires in less than 30 days"
+
+          # Signature verification failures
+          - alert: SignatureVerificationFailures
+            expr: rate(signatures_verified_total{result="failed"}[5m]) > 0.01
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Signature verification failures"
+              description: "Signature verification failure rate is above 1%"
+
+  dashboards.yaml: |
+    # Grafana dashboard configurations
+    dashboards:
+      overview:
+        title: "Provenance System Overview"
+        panels:
+          - title: "Request Rate"
+            type: "graph"
+            targets:
+              - expr: "rate(http_requests_total[5m])"
+                legend: "RPS"
+          - title: "Error Rate"
+            type: "singlestat"
+            targets:
+              - expr: "rate(http_requests_total{status=~\"5..\"}[5m]) / rate(http_requests_total[5m])"
+                legend: "Error %"
+          - title: "Response Time"
+            type: "graph"
+            targets:
+              - expr: "histogram_quantile(0.95, rate(response_time_seconds_bucket[5m]))"
+                legend: "95th percentile"
+              - expr: "histogram_quantile(0.50, rate(response_time_seconds_bucket[5m]))"
+                legend: "50th percentile"
+
+      sbom_analytics:
+        title: "SBOM Processing Analytics"
+        panels:
+          - title: "SBOMs Processed"
+            type: "graph"
+            targets:
+              - expr: "rate(sbom_parsed_total[5m])"
+                legend: "{{format}}"
+          - title: "Components Discovered"
+            type: "graph"
+            targets:
+              - expr: "sbom_components_discovered"
+                legend: "{{ecosystem}}"
+          - title: "Vulnerabilities by Severity"
+            type: "piechart"
+            targets:
+              - expr: "sbom_vulnerabilities_found"
+                legend: "{{severity}}"
+
+      compliance_dashboard:
+        title: "Compliance Monitoring"
+        panels:
+          - title: "Compliance Scores"
+            type: "graph"
+            targets:
+              - expr: "compliance_score"
+                legend: "{{standard}} - {{project}}"
+          - title: "Compliance Requirements Status"
+            type: "bargraph"
+            targets:
+              - expr: "compliance_requirements_total"
+                legend: "{{status}}"
+
+      security_monitoring:
+        title: "Security Monitoring"
+        panels:
+          - title: "Signature Verification Success Rate"
+            type: "singlestat"
+            targets:
+              - expr: "rate(signatures_verified_total{result=\"success\"}[5m]) / rate(signatures_verified_total[5m])"
+          - title: "Authentication Attempts"
+            type: "graph"
+            targets:
+              - expr: "rate(authentication_attempts_total[5m])"
+                legend: "{{result}}"
+          - title: "Rate Limit Violations"
+            type: "graph"
+            targets:
+              - expr: "rate(rate_limit_exceeded_total[5m])"
+                legend: "{{endpoint}}"

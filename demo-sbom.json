@@ -1,22 +1,61 @@
 {
-  "id": "3a9df2f1-0dfa-4ca5-934d-bc90e7ed9ca2",
+  "id": "43b38c3f-1077-4bbd-893a-2647019b8d89",
   "format": "cyclonedx",
   "version": "1.0",
-  "created_at": "2025-08-11T05:16:28.334245306Z",
+  "created_at": "2025-08-20T03:42:34.863604877Z",
   "created_by": "provenance-linker",
   "components": [
     {
-      "id": "e4225d92-a379-4ef7-8df1-4fe7e9bd7740",
-      "name": "example-component",
-      "version": "1.0.0",
+      "id": "2a3dab36-ecc0-4ca6-a1bc-9f609ce402e1",
+      "name": "gin-gonic/gin",
+      "version": "v1.10.1",
       "type": "library",
       "license": [
         "MIT"
       ],
-      "description": "Example component for demonstration",
-      "metadata": {}
+      "homepage": "https://gin-gonic.com/",
+      "description": "Gin is a HTTP web framework written in Go",
+      "metadata": {
+        "ecosystem": "go-modules",
+        "language": "go"
+      }
+    },
+    {
+      "id": "7a502a38-a0c1-4feb-bd0c-59af449d06e0",
+      "name": "neo4j/neo4j-go-driver",
+      "version": "v5.24.0",
+      "type": "library",
+      "license": [
+        "Apache-2.0"
+      ],
+      "homepage": "https://github.com/neo4j/neo4j-go-driver",
+      "description": "Neo4j driver for Go",
+      "metadata": {
+        "ecosystem": "go-modules",
+        "language": "go"
+      }
+    },
+    {
+      "id": "474cbbbc-2988-4bea-94ee-6227a7460b5e",
+      "name": "sirupsen/logrus",
+      "version": "v1.9.3",
+      "type": "library",
+      "license": [
+        "MIT"
+      ],
+      "homepage": "https://github.com/sirupsen/logrus",
+      "description": "Structured, pluggable logging for Go",
+      "metadata": {
+        "ecosystem": "go-modules",
+        "language": "go"
+      }
     }
   ],
-  "metadata": {},
+  "metadata": {
+    "format": "cyclonedx",
+    "include_dev_deps": "false",
+    "scan_licenses": "false",
+    "source": "."
+  },
   "hash": ""
 }

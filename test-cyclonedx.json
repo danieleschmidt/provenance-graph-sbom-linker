@@ -1,0 +1,73 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2025-08-20T03:45:00Z",
+    "tools": [{
+      "vendor": "Terragon Labs",
+      "name": "provenance-linker",
+      "version": "1.0.0"
+    }]
+  },
+  "components": [
+    {
+      "type": "library",
+      "bom-ref": "gin-gonic/gin@v1.10.1",
+      "name": "gin-gonic/gin",
+      "version": "v1.10.1",
+      "description": "Gin is a HTTP web framework written in Go",
+      "licenses": [{
+        "license": {
+          "id": "MIT"
+        }
+      }],
+      "purl": "pkg:golang/github.com/gin-gonic/gin@v1.10.1",
+      "hashes": [{
+        "alg": "SHA-256",
+        "content": "abc123def456..."
+      }]
+    },
+    {
+      "type": "library", 
+      "bom-ref": "neo4j/neo4j-go-driver@v5.28.2",
+      "name": "neo4j/neo4j-go-driver",
+      "version": "v5.28.2",
+      "description": "Neo4j driver for Go",
+      "licenses": [{
+        "license": {
+          "id": "Apache-2.0"
+        }
+      }],
+      "purl": "pkg:golang/github.com/neo4j/neo4j-go-driver/v5@v5.28.2"
+    },
+    {
+      "type": "library",
+      "bom-ref": "sirupsen/logrus@v1.9.3", 
+      "name": "sirupsen/logrus",
+      "version": "v1.9.3",
+      "description": "Structured, pluggable logging for Go",
+      "licenses": [{
+        "license": {
+          "id": "MIT"
+        }
+      }],
+      "purl": "pkg:golang/github.com/sirupsen/logrus@v1.9.3"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "gin-gonic/gin@v1.10.1",
+      "dependsOn": []
+    },
+    {
+      "ref": "neo4j/neo4j-go-driver@v5.28.2", 
+      "dependsOn": []
+    },
+    {
+      "ref": "sirupsen/logrus@v1.9.3",
+      "dependsOn": []
+    }
+  ]
+}

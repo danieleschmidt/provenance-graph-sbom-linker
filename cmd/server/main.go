@@ -16,10 +16,8 @@ import (
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/version"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/monitoring"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/pipeline"
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/autoscaling"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/cache"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/concurrency"
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/loadbalancer"
 	pkgErrors "github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
