@@ -23,6 +23,7 @@ type Config struct {
 type ServerConfig struct {
 	Host         string        `mapstructure:"host"`
 	Port         int           `mapstructure:"port"`
+	Environment  string        `mapstructure:"environment"`
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
@@ -105,6 +106,7 @@ func DefaultConfig() *Config {
 		Server: ServerConfig{
 			Host:         "0.0.0.0",
 			Port:         8080,
+			Environment:  "development",
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
 			IdleTimeout:  60 * time.Second,
