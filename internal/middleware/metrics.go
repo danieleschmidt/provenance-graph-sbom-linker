@@ -47,17 +47,7 @@ func (mm *MetricsMiddleware) CollectMetrics() gin.HandlerFunc {
 	})
 }
 
-// RequestID middleware adds unique request ID to context
-func RequestIDMiddleware() gin.HandlerFunc {
-	return gin.HandlerFunc(func(c *gin.Context) {
-		requestID := generateRequestID()
-		c.Set("request_id", requestID)
-		c.Header("X-Request-ID", requestID)
-		c.Next()
-	})
-}
-
-// generateRequestID generates a simple request ID
+// generateRequestID generates a simple request ID (internal function)
 func generateRequestID() string {
 	// Simple timestamp-based ID for Generation 2
 	// Will be enhanced with proper UUID in Generation 3

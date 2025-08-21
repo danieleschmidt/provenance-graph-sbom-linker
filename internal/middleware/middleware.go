@@ -9,7 +9,7 @@ import (
 )
 
 // CORS middleware handles Cross-Origin Resource Sharing
-func CORS() gin.HandlerFunc {
+func CORS(origins []string) gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
 		c.Header("Access-Control-Allow-Origin", "*")
 		c.Header("Access-Control-Allow-Credentials", "true")
@@ -25,8 +25,8 @@ func CORS() gin.HandlerFunc {
 	})
 }
 
-// SecurityHeaders adds common security headers
-func SecurityHeaders() gin.HandlerFunc {
+// Security adds common security headers
+func Security() gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
 		c.Header("X-Frame-Options", "DENY")
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -38,8 +38,8 @@ func SecurityHeaders() gin.HandlerFunc {
 	})
 }
 
-// RequestID adds a unique request ID to each request
-func RequestID() gin.HandlerFunc {
+// RequestIDMiddleware adds a unique request ID to each request
+func RequestIDMiddleware() gin.HandlerFunc {
 	return gin.HandlerFunc(func(c *gin.Context) {
 		requestID := c.GetHeader("X-Request-ID")
 		if requestID == "" {
@@ -49,6 +49,11 @@ func RequestID() gin.HandlerFunc {
 		c.Set("request_id", requestID)
 		c.Next()
 	})
+}
+
+// RateLimiter implements basic rate limiting
+func RateLimiter() gin.HandlerFunc {
+	return RateLimit(1000) // Default 1000 requests per second
 }
 
 // RateLimit implements basic rate limiting
@@ -151,6 +156,24 @@ func Logging() gin.HandlerFunc {
 			// Log as info for successful requests
 		}
 	}
+}
+
+// RequestSizeLimit limits the size of request bodies
+func RequestSizeLimit(maxSizeBytes int64) gin.HandlerFunc {
+	return gin.HandlerFunc(func(c *gin.Context) {
+		if c.Request.ContentLength > maxSizeBytes {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{
+				"error": "Request body too large",
+				"max_size": maxSizeBytes,
+			})
+			c.Abort()
+			return
+		}
+		
+		// Limit the reader
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSizeBytes)
+		c.Next()
+	})
 }
 
 // Auth middleware for JWT authentication
