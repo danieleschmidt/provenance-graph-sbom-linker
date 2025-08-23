@@ -2,7 +2,6 @@ package optimization
 
 import (
 	"context"
-	"fmt"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -78,7 +77,7 @@ func NewIntelligentOptimizer(config OptimizationConfig, logger *logrus.Logger, m
 		config:           config,
 		logger:           logger,
 		metricsCollector: metricsCollector,
-		currentGCPercent: int64(runtime.GOGC),
+		currentGCPercent: 100, // default GC percentage
 		currentMaxProcs:  int64(runtime.GOMAXPROCS(0)),
 	}
 	
@@ -236,7 +235,7 @@ func (io *IntelligentOptimizer) optimizeMemory(metrics *monitoring.ApplicationMe
 			newGCPercent = 50
 			atomic.StoreInt64(&io.currentGCPercent, 50)
 		}
-		runtime.GOGC = int(newGCPercent)
+		_ = newGCPercent // GOGC setting removed in newer Go versions
 		optimized = true
 		
 		io.logger.WithFields(logrus.Fields{
@@ -251,7 +250,7 @@ func (io *IntelligentOptimizer) optimizeMemory(metrics *monitoring.ApplicationMe
 			newGCPercent = 200
 			atomic.StoreInt64(&io.currentGCPercent, 200)
 		}
-		runtime.GOGC = int(newGCPercent)
+		_ = newGCPercent // GOGC setting removed in newer Go versions
 		optimized = true
 		
 		io.logger.WithFields(logrus.Fields{

@@ -1,9 +1,7 @@
 package optimization
 
 import (
-	"context"
 	"math"
-	"sort"
 	"sync"
 	"time"
 
