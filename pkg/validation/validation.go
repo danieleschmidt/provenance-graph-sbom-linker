@@ -234,7 +234,7 @@ func isValidVersion(version string) bool {
 
 func isValidHash(hash string) bool {
 	if hash == "" {
-		return true // Empty hash is allowed, will be generated if needed
+		return false // Empty hash is not allowed for security
 	}
 	
 	// Allow common hash formats with prefixes
@@ -268,7 +268,7 @@ func isValidHash(hash string) bool {
 	}
 	
 	// Plain hash without prefix - more flexible length validation
-	if len(hash) < 6 || len(hash) > 128 {
+	if len(hash) < 8 || len(hash) > 128 {
 		return false
 	}
 	

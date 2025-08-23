@@ -110,13 +110,13 @@ func (p *DatabasePool) InitializeRedis(addr, password string, db int) error {
 		DB:           db,
 		PoolSize:     p.config.MaxOpenConns,
 		MinIdleConns: p.config.MaxIdleConns,
-		MaxConnAge:   p.config.ConnMaxLifetime,
-		PoolTimeout:  30 * time.Second,
-		IdleTimeout:  p.config.ConnMaxIdleTime,
+		ConnMaxLifetime: p.config.ConnMaxLifetime,
+		PoolTimeout:     30 * time.Second,
+		ConnMaxIdleTime: p.config.ConnMaxIdleTime,
 	})
 
-	// Test connectivity
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	// Test connectivity  
+	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	
 	if err := p.redisClient.Ping(ctx).Err(); err != nil {
