@@ -21,6 +21,12 @@ import (
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/autoscaling"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/loadbalancer"
 	pkgErrors "github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/errors"
+	
+	// Research Contributions - Novel AI/ML Security Framework
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/intelligence"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/blockchain"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/mlbom"
+	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/temporal"
 	"github.com/sirupsen/logrus"
 )
 
@@ -46,7 +52,7 @@ func main() {
 		"version": version.Version,
 		"commit":  version.Commit,
 		"date":    version.Date,
-	}).Info("Starting Self-Healing Provenance Graph SBOM Linker")
+	}).Info("Starting AI-Enhanced Zero-Trust Provenance Graph SBOM Linker with Research Framework")
 
 	// Start background metrics collection
 	ctx, cancel := context.WithCancel(context.Background())
@@ -209,6 +215,102 @@ func main() {
 		"performance_cache": "enabled",
 		"resource_pool":     "enabled", 
 		"load_balancer":     "enabled",
+	})
+	
+	// ===========================================================================
+	// RESEARCH CONTRIBUTIONS - AI-Enhanced Zero-Trust Framework
+	// ===========================================================================
+	
+	// Initialize SAC-Rainbow Reinforcement Learning Agent
+	sacConfig := intelligence.SACRainbowConfig{
+		StateSize:              17, // Security state vector size
+		ActionSize:             8,  // Available security actions
+		BufferSize:             10000,
+		EntropyCoeff:           0.01,
+		DiscountFactor:         0.99,
+		SoftUpdateCoeff:        0.005,
+		LearningRate:           0.0003,
+		TargetUpdateFreq:       100,
+		PrioritizationAlpha:    0.6,
+		ImportanceSamplingBeta: 0.4,
+		NoisyNetworks:          true,
+		CategoricalDQN:         true,
+		NStepReturns:           3,
+		DuelingNetwork:         true,
+		ExplorationDecay:       0.995,
+		InitialTemperature:     1.0,
+	}
+	
+	sacAgent, err := intelligence.NewSACRainbowAgent(sacConfig, logger)
+	if err != nil {
+		log.Fatalf("Failed to initialize SAC-Rainbow agent: %v", err)
+	}
+	
+	// Initialize Blockchain-Based Immutable Provenance
+	blockchainConfig := blockchain.ProvenanceChainConfig{
+		InitialDifficulty: 4,
+		ConsensusConfig: blockchain.ConsensusConfig{
+			Type:              blockchain.ConsensusPoA, // Proof of Authority for enterprise
+			MinValidators:     3,
+			RequiredConsensus: 0.67,
+			BlockTime:         30 * time.Second,
+			FinalityBlocks:    6,
+			SlashingEnabled:   true,
+		},
+		CryptoConfig: blockchain.CryptographicConfig{},
+		Governance:   blockchain.GovernanceConfig{},
+	}
+	
+	provenanceChain, err := blockchain.NewImmutableProvenanceChain(blockchainConfig, logger)
+	if err != nil {
+		log.Fatalf("Failed to initialize blockchain provenance: %v", err)
+	}
+	
+	// Initialize Advanced ML-BOM Generator
+	mlbomConfig := mlbom.MLBOMConfig{
+		IncludeDataSources:    true,
+		IncludeBiasAssessment: true,
+		IncludePrivacyInfo:    true,
+		IncludeSecurityInfo:   true,
+		IncludeLLMSpecific:    true,
+		DetailLevel:           mlbom.DetailLevelResearch,
+		ComplianceStandards:   []string{"nist-ai-rmf", "eu-ai-act", "iso-42001"},
+		GenerationMode:        mlbom.GenerationModeDynamic,
+	}
+	
+	mlbomGenerator := mlbom.NewMLBOMGenerator(mlbomConfig, logger)
+	
+	// Initialize Temporal Provenance Graph
+	temporalConfig := temporal.TemporalGraphConfig{
+		MaxNodes:            100000,
+		MaxEdges:            1000000,
+		SnapshotInterval:    5 * time.Minute,
+		RetentionPeriod:     30 * 24 * time.Hour, // 30 days
+		GNNConfig: temporal.GNNConfig{
+			Architecture: "GraphSAGE",
+			Layers:       3,
+			HiddenDim:    128,
+		},
+		PredictionHorizon:   24 * time.Hour,
+		TrainingInterval:    6 * time.Hour,
+		AnomalyThreshold:    0.8,
+		BaselineWindow:      7 * 24 * time.Hour, // 1 week baseline
+		BatchSize:           64,
+		ConcurrencyLevel:    8,
+		CacheSize:           10000,
+	}
+	
+	temporalGraph, err := temporal.NewTemporalProvenanceGraph(temporalConfig, logger)
+	if err != nil {
+		log.Fatalf("Failed to initialize temporal provenance graph: %v", err)
+	}
+	
+	logger.Info("Research framework initialized successfully", logrus.Fields{
+		"sac_agent":         "enabled",
+		"blockchain":        "enabled",
+		"ml_bom":           "enabled", 
+		"temporal_graph":    "enabled",
+		"research_mode":     "active",
 	})
 	
 	// Start monitoring integration
