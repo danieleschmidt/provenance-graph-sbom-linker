@@ -2,8 +2,6 @@ package intelligence
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"math"
 	"math/rand"
 	"sync"
@@ -31,7 +29,7 @@ type SecurityState struct {
 
 // SecurityAction represents possible security interventions
 type SecurityAction struct {
-	Type        ActionType `json:"type"`
+	Type        SecurityActionType `json:"type"`
 	Intensity   float64    `json:"intensity"`    // Action strength [0,1]
 	Target      string     `json:"target"`       // Target component/system
 	Parameters  map[string]interface{} `json:"parameters"`
@@ -39,17 +37,17 @@ type SecurityAction struct {
 	EstimatedCost float64  `json:"estimated_cost"` // Resource cost estimate
 }
 
-type ActionType string
+type SecurityActionType string
 
 const (
-	ActionQuarantine        ActionType = "quarantine"
-	ActionRevokeSignature   ActionType = "revoke_signature" 
-	ActionUpdatePolicy      ActionType = "update_policy"
-	ActionIncreaseMonitoring ActionType = "increase_monitoring"
-	ActionBlockArtifact     ActionType = "block_artifact"
-	ActionRequestAttestation ActionType = "request_attestation"
-	ActionIsolateComponent  ActionType = "isolate_component"
-	ActionTriggerAudit      ActionType = "trigger_audit"
+	ActionQuarantine        SecurityActionType = "quarantine"
+	ActionRevokeSignature   SecurityActionType = "revoke_signature" 
+	ActionUpdatePolicy      SecurityActionType = "update_policy"
+	ActionIncreaseMonitoring SecurityActionType = "increase_monitoring"
+	ActionBlockArtifact     SecurityActionType = "block_artifact"
+	ActionRequestAttestation SecurityActionType = "request_attestation"
+	ActionIsolateComponent  SecurityActionType = "isolate_component"
+	ActionTriggerAudit      SecurityActionType = "trigger_audit"
 )
 
 // ExperienceBuffer implements prioritized experience replay with rainbow improvements
@@ -189,8 +187,8 @@ type SACRainbowAgent struct {
 type SecurityEnvironment struct {
 	currentState       SecurityState
 	threatSimulator    *ThreatSimulator
-	rewardCalculator   *RewardCalculator
-	stateTransition    *StateTransitionModel
+	// Placeholder for reward calculation and state transition
+	// These will be implemented as part of the ML framework
 	logger             *logrus.Logger
 }
 
@@ -523,17 +521,13 @@ func (agent *SACRainbowAgent) vectorToAction(actionVector []float64, state Secur
 	// Convert neural network output to SecurityAction
 	// This is a simplified mapping - real implementation would be more sophisticated
 	
-	actionTypeIdx := int(actionVector[0]*float64(len([]ActionType{
-		ActionQuarantine, ActionRevokeSignature, ActionUpdatePolicy, 
-		ActionIncreaseMonitoring, ActionBlockArtifact, ActionRequestAttestation,
-		ActionIsolateComponent, ActionTriggerAudit,
-	})))
-	
-	actionTypes := []ActionType{
+	actionTypes := []SecurityActionType{
 		ActionQuarantine, ActionRevokeSignature, ActionUpdatePolicy,
 		ActionIncreaseMonitoring, ActionBlockArtifact, ActionRequestAttestation,
 		ActionIsolateComponent, ActionTriggerAudit,
 	}
+	
+	actionTypeIdx := int(actionVector[0]*float64(len(actionTypes)))
 	
 	if actionTypeIdx >= len(actionTypes) {
 		actionTypeIdx = len(actionTypes) - 1

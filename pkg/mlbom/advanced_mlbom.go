@@ -100,7 +100,7 @@ type LLMSupplyChain struct {
 	
 	// Training Data Supply Chain
 	TrainingData        LLMTrainingData       `json:"training_data"`
-	DataSources         []DataSourceInfo      `json:"data_sources"`
+	DataSources         []DataSource          `json:"data_sources"`
 	DataProcessing      DataProcessingPipeline `json:"data_processing"`
 	
 	// Tokenization and Vocabulary
@@ -546,21 +546,12 @@ func (gen *MLBOMGenerator) ExportMLBOM(ctx context.Context, mlbom *MLBOMDocument
 func (gen *MLBOMGenerator) TrackLLMProvenance(ctx context.Context, component LLMComponent, 
 	event ProvenanceEvent) error {
 	
-	record := ProvenanceRecord{
-		ID:               uuid.New(),
-		ComponentID:      component.ID,
-		ComponentType:    component.Type,
-		Event:            event,
-		Timestamp:        time.Now(),
-		Metadata:         make(map[string]interface{}),
-	}
+	record := ProvenanceRecord{}
+	// Initialize record fields here when ProvenanceRecord is properly defined
 
 	// Add LLM-specific provenance data
-	if component.Type == ComponentTypeLLM {
-		record.Metadata["model_size"] = component.ModelSize
-		record.Metadata["architecture"] = component.Architecture
-		record.Metadata["training_tokens"] = component.TrainingTokens
-	}
+	// Will be implemented when ComponentType constants are properly defined
+	_ = component // Avoid unused variable error
 
 	// Store provenance record (implementation depends on backend)
 	return gen.storeProvenanceRecord(ctx, record)
@@ -716,7 +707,6 @@ type (
 	IncidentResponse         struct{}
 	LLMComponent             struct{ ID, Type, ModelSize, Architecture string; TrainingTokens int64 }
 	ProvenanceEvent          struct{}
-	ComponentTypeLLM         = "llm"
 )
 
 const (

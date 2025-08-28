@@ -241,7 +241,7 @@ func main() {
 		InitialTemperature:     1.0,
 	}
 	
-	sacAgent, err := intelligence.NewSACRainbowAgent(sacConfig, logger)
+	_, err = intelligence.NewSACRainbowAgent(sacConfig, logger) // SAC agent initialized
 	if err != nil {
 		log.Fatalf("Failed to initialize SAC-Rainbow agent: %v", err)
 	}
@@ -261,7 +261,7 @@ func main() {
 		Governance:   blockchain.GovernanceConfig{},
 	}
 	
-	provenanceChain, err := blockchain.NewImmutableProvenanceChain(blockchainConfig, logger)
+	_, err = blockchain.NewImmutableProvenanceChain(blockchainConfig, logger) // Blockchain initialized
 	if err != nil {
 		log.Fatalf("Failed to initialize blockchain provenance: %v", err)
 	}
@@ -278,7 +278,7 @@ func main() {
 		GenerationMode:        mlbom.GenerationModeDynamic,
 	}
 	
-	mlbomGenerator := mlbom.NewMLBOMGenerator(mlbomConfig, logger)
+	_ = mlbom.NewMLBOMGenerator(mlbomConfig, logger) // ML-BOM generator initialized
 	
 	// Initialize Temporal Provenance Graph
 	temporalConfig := temporal.TemporalGraphConfig{
@@ -300,7 +300,7 @@ func main() {
 		CacheSize:           10000,
 	}
 	
-	temporalGraph, err := temporal.NewTemporalProvenanceGraph(temporalConfig, logger)
+	_, err = temporal.NewTemporalProvenanceGraph(temporalConfig, logger) // Temporal graph initialized
 	if err != nil {
 		log.Fatalf("Failed to initialize temporal provenance graph: %v", err)
 	}
