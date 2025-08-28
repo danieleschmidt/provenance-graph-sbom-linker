@@ -1,0 +1,44 @@
+# Development Configuration for Provenance Graph SBOM Linker
+server:
+  port: 8080
+  read_timeout: 15s
+  write_timeout: 15s
+  shutdown_timeout: 10s
+  max_connections: 100
+
+database:
+  uri: "bolt://localhost:7687"
+  username: "neo4j"
+  password: "password"
+  max_connections: 10
+  connection_timeout: 10s
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  max_connections: 10
+  connection_timeout: 5s
+
+logging:
+  level: "debug"
+  format: "text"
+  output: "stdout"
+
+security:
+  enable_tls: false
+  enable_auth: false
+  jwt_secret: "development-secret-key"
+
+observability:
+  metrics_enabled: true
+  tracing_enabled: true
+  otel_endpoint: "http://localhost:14268/api/traces"
+  prometheus_endpoint: "/metrics"
+
+features:
+  enable_research_mode: true
+  enable_ml_bom: true
+  enable_blockchain: true
+  enable_ai_security: true

@@ -2,9 +2,7 @@ package temporal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"math"
 	"sort"
 	"sync"
 	"time"
