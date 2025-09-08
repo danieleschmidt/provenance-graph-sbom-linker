@@ -1,8 +1,6 @@
 module github.com/danieleschmidt/provenance-graph-sbom-linker
 
-go 1.23.0
-
-toolchain go1.23.12
+go 1.24.0
 
 require (
 	github.com/gin-gonic/gin v1.10.1
@@ -64,7 +62,7 @@ require (
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
