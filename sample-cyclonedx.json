@@ -8,18 +8,39 @@
     "tools": [
       {
         "vendor": "CycloneDX",
-        "name": "cyclonedx-cli",
-        "version": "0.24.0"
+        "name": "cyclonedx-go",
+        "version": "0.9.0"
       }
     ]
   },
   "components": [
     {
+      "type": "application",
+      "bom-ref": "provenance-graph-sbom-linker-v1.0.0",
+      "name": "provenance-graph-sbom-linker",
+      "version": "v1.0.0",
+      "description": "Supply chain provenance graph with SBOM parsing and cryptographic attestation",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/danieleschmidt/provenance-graph-sbom-linker@v1.0.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
       "type": "library",
       "bom-ref": "gin-v1.10.1",
       "name": "gin-gonic/gin",
       "version": "v1.10.1",
-      "description": "Gin is a HTTP web framework written in Go",
+      "description": "Gin is a HTTP web framework written in Go (fastest)",
       "licenses": [
         {
           "license": {
@@ -31,16 +52,16 @@
       "hashes": [
         {
           "alg": "SHA-256",
-          "content": "abc123def456"
+          "content": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
         }
       ]
     },
     {
       "type": "library",
-      "bom-ref": "neo4j-v5.24.0",
+      "bom-ref": "neo4j-v5.28.2",
       "name": "neo4j/neo4j-go-driver",
-      "version": "v5.24.0",
-      "description": "Neo4j driver for Go",
+      "version": "v5.28.2",
+      "description": "Neo4j driver for Go — graph database connectivity",
       "licenses": [
         {
           "license": {
@@ -48,7 +69,144 @@
           }
         }
       ],
-      "purl": "pkg:golang/github.com/neo4j/neo4j-go-driver/v5@v5.24.0"
+      "purl": "pkg:golang/github.com/neo4j/neo4j-go-driver/v5@v5.28.2",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "2c624232cdd221771294dfbb310acbc7def170fd5df46f00435c20a5e5d64b4e"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "uuid-v1.6.0",
+      "name": "google/uuid",
+      "version": "v1.6.0",
+      "description": "Go package for UUIDs — RFC 4122 compliant",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-3-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/google/uuid@v1.6.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "19581c0defdceb326ab0963e2c0ced8f2fcb1a2e9c5ce0e43e1202e8dd0d249f"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "redis-v9.12.1",
+      "name": "redis/go-redis",
+      "version": "v9.12.1",
+      "description": "Type-safe Redis client for Golang",
+      "licenses": [
+        {
+          "license": {
+            "id": "BSD-2-Clause"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/redis/go-redis/v9@v9.12.1",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "4fd21e0682aa99b1c30ec5e01adaaf8b69a57c64e15a6a8df4b3b0deac7bb7f3"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "jwt-v5.3.0",
+      "name": "golang-jwt/jwt",
+      "version": "v5.3.0",
+      "description": "JSON Web Tokens for Go",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/golang-jwt/jwt/v5@v5.3.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "logrus-v1.9.3",
+      "name": "sirupsen/logrus",
+      "version": "v1.9.3",
+      "description": "Structured, pluggable logging for Go",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:golang/github.com/sirupsen/logrus@v1.9.3",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "d4c57f7ac18e9c43c8e9ad9bb2d80e1dbe1e37adcf0aff9c6da63fb6a37de38f"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "otel-v1.37.0",
+      "name": "opentelemetry/otel",
+      "version": "v1.37.0",
+      "description": "OpenTelemetry Go API and SDK",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:golang/go.opentelemetry.io/otel@v1.37.0",
+      "hashes": [
+        {
+          "alg": "SHA-256",
+          "content": "ef2d249c4a3a4b0f34ebd66e3e34c8c4e5bc5d3e2ce15afb4b7e0ed4b8c62b8e"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "provenance-graph-sbom-linker-v1.0.0",
+      "dependsOn": [
+        "gin-v1.10.1",
+        "neo4j-v5.28.2",
+        "uuid-v1.6.0",
+        "redis-v9.12.1",
+        "jwt-v5.3.0",
+        "logrus-v1.9.3",
+        "otel-v1.37.0"
+      ]
+    },
+    {
+      "ref": "gin-v1.10.1",
+      "dependsOn": [
+        "uuid-v1.6.0"
+      ]
+    },
+    {
+      "ref": "otel-v1.37.0",
+      "dependsOn": [
+        "logrus-v1.9.3"
+      ]
     }
   ]
 }

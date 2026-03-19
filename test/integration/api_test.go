@@ -43,7 +43,7 @@ func (suite *APITestSuite) SetupSuite() {
 		},
 	}
 
-	suite.router = api.SetupRoutes(nil, suite.config)
+	suite.router = api.SetupRoutes(nil, suite.config, nil, nil)
 }
 
 func (suite *APITestSuite) TestHealthEndpoint() {
@@ -379,7 +379,7 @@ func BenchmarkAPIEndpoints(b *testing.B) {
 		},
 	}
 
-	router := api.SetupRoutes(nil, config)
+	router := api.SetupRoutes(nil, config, nil, nil)
 
 	benchmarks := []struct {
 		name   string

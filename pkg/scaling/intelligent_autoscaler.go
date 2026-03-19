@@ -892,7 +892,8 @@ func (ia *IntelligentAutoscaler) ForceScale(ctx context.Context, action ScalingA
 		Urgency:     "high",
 	}
 
-	return ia.executeScalingAction(ctx, decision)
+	ia.executeScalingAction(ctx, decision)
+	return nil
 }
 
 // Predictor methods

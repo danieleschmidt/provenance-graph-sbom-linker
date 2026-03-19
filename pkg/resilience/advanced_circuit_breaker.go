@@ -72,18 +72,18 @@ type CircuitBreakerState struct {
 type State int
 
 const (
-	StateClosed State = iota
-	StateOpen
-	StateHalfOpen
+	AdvStateClosed State = iota
+	AdvStateOpen
+	AdvStateHalfOpen
 )
 
 func (s State) String() string {
 	switch s {
-	case StateClosed:
+	case AdvStateClosed:
 		return "CLOSED"
-	case StateOpen:
+	case AdvStateOpen:
 		return "OPEN"
-	case StateHalfOpen:
+	case AdvStateHalfOpen:
 		return "HALF_OPEN"
 	default:
 		return "UNKNOWN"
@@ -182,7 +182,7 @@ func NewAdvancedCircuitBreaker(name string, config *AdvancedCircuitBreakerConfig
 		maxHalfOpenCalls:   config.MaxHalfOpenCalls,
 		lastStateChange:    time.Now(),
 		state: &CircuitBreakerState{
-			State:                 StateClosed,
+			State:                 AdvStateClosed,
 			StateChangedAt:       time.Now(),
 			StateChangeReason:    "initialized",
 			HealthScore:          100.0,
@@ -277,10 +277,10 @@ func (cb *AdvancedCircuitBreaker) allowRequest(ctx context.Context) bool {
 	cb.mu.RUnlock()
 
 	switch currentState {
-	case StateClosed:
+	case AdvStateClosed:
 		return true
 		
-	case StateOpen:
+	case AdvStateOpen:
 		// Check if it's time to attempt recovery
 		cb.mu.RLock()
 		nextAttempt := cb.state.NextAttemptAt
@@ -304,7 +304,7 @@ func (cb *AdvancedCircuitBreaker) allowRequest(ctx context.Context) bool {
 		}
 		return false
 		
-	case StateHalfOpen:
+	case AdvStateHalfOpen:
 		// Allow limited requests in half-open state
 		if atomic.LoadInt64(&cb.halfOpenCount) < cb.maxHalfOpenCalls {
 			atomic.AddInt64(&cb.halfOpenCount, 1)
@@ -357,9 +357,9 @@ func (cb *AdvancedCircuitBreaker) onFailure(err error, timestamp time.Time) {
 		failureThreshold = cb.adaptiveThresholds.currentFailureThreshold
 	}
 
-	if cb.state.State == StateClosed && cb.consecutiveFailures >= failureThreshold {
+	if cb.state.State == AdvStateClosed && cb.consecutiveFailures >= failureThreshold {
 		cb.transitionToOpenUnsafe("failure_threshold_exceeded")
-	} else if cb.state.State == StateHalfOpen {
+	} else if cb.state.State == AdvStateHalfOpen {
 		cb.transitionToOpenUnsafe("failure_in_half_open")
 		atomic.StoreInt64(&cb.halfOpenCount, 0)
 	}
@@ -388,7 +388,7 @@ func (cb *AdvancedCircuitBreaker) onSuccess(timestamp time.Time) {
 		successThreshold = cb.adaptiveThresholds.currentSuccessThreshold
 	}
 
-	if cb.state.State == StateHalfOpen && cb.consecutiveSuccesses >= successThreshold {
+	if cb.state.State == AdvStateHalfOpen && cb.consecutiveSuccesses >= successThreshold {
 		cb.transitionToClosedUnsafe("success_threshold_met")
 		atomic.StoreInt64(&cb.halfOpenCount, 0)
 	}
@@ -403,8 +403,8 @@ func (cb *AdvancedCircuitBreaker) transitionToOpen(reason string) {
 
 // transitionToOpenUnsafe changes state to open (not thread-safe)
 func (cb *AdvancedCircuitBreaker) transitionToOpenUnsafe(reason string) {
-	if cb.state.State != StateOpen {
-		cb.state.State = StateOpen
+	if cb.state.State != AdvStateOpen {
+		cb.state.State = AdvStateOpen
 		cb.state.StateChangedAt = time.Now()
 		cb.state.StateChangeReason = reason
 		cb.state.NextAttemptAt = time.Now().Add(cb.config.Timeout)
@@ -425,8 +425,8 @@ func (cb *AdvancedCircuitBreaker) transitionToHalfOpen(reason string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
-	if cb.state.State != StateHalfOpen {
-		cb.state.State = StateHalfOpen
+	if cb.state.State != AdvStateHalfOpen {
+		cb.state.State = AdvStateHalfOpen
 		cb.state.StateChangedAt = time.Now()
 		cb.state.StateChangeReason = reason
 		cb.state.NextAttemptAt = time.Time{}
@@ -444,8 +444,8 @@ func (cb *AdvancedCircuitBreaker) transitionToHalfOpen(reason string) {
 
 // transitionToClosedUnsafe changes state to closed (not thread-safe)
 func (cb *AdvancedCircuitBreaker) transitionToClosedUnsafe(reason string) {
-	if cb.state.State != StateClosed {
-		cb.state.State = StateClosed
+	if cb.state.State != AdvStateClosed {
+		cb.state.State = AdvStateClosed
 		cb.state.StateChangedAt = time.Now()
 		cb.state.StateChangeReason = reason
 		cb.state.NextAttemptAt = time.Time{}
@@ -517,7 +517,7 @@ func (cb *AdvancedCircuitBreaker) performHealthCheck() {
 
 	cb.state.HealthScore = healthScore
 
-	if cb.state.State == StateOpen && healthScore > 80.0 {
+	if cb.state.State == AdvStateOpen && healthScore > 80.0 {
 		cb.logger.WithFields(logrus.Fields{
 			"circuit_breaker": cb.name,
 			"health_score":   healthScore,
@@ -584,9 +584,19 @@ func (cb *AdvancedCircuitBreaker) adjustThresholds() {
 	
 	// Adjust failure threshold based on error rate
 	if errorRate > 0.1 { // High error rate
-		cb.adaptiveThresholds.currentFailureThreshold = max(1, int64(float64(cb.adaptiveThresholds.baseFailureThreshold)*0.7))
+		reduced := int64(float64(cb.adaptiveThresholds.baseFailureThreshold) * 0.7)
+		if reduced < 1 {
+			reduced = 1
+		}
+		cb.adaptiveThresholds.currentFailureThreshold = reduced
 	} else if errorRate < 0.01 { // Low error rate
-		cb.adaptiveThresholds.currentFailureThreshold = min(cb.adaptiveThresholds.baseFailureThreshold*2, int64(float64(cb.adaptiveThresholds.baseFailureThreshold)*1.5))
+		doubled := cb.adaptiveThresholds.baseFailureThreshold * 2
+		scaled := int64(float64(cb.adaptiveThresholds.baseFailureThreshold) * 1.5)
+		if doubled < scaled {
+			cb.adaptiveThresholds.currentFailureThreshold = doubled
+		} else {
+			cb.adaptiveThresholds.currentFailureThreshold = scaled
+		}
 	}
 
 	// Update state
@@ -694,7 +704,7 @@ func (cb *AdvancedCircuitBreaker) Reset() {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
 
-	cb.state.State = StateClosed
+	cb.state.State = AdvStateClosed
 	cb.state.StateChangedAt = time.Now()
 	cb.state.StateChangeReason = "manual_reset"
 	cb.state.NextAttemptAt = time.Time{}
@@ -711,7 +721,7 @@ func (cb *AdvancedCircuitBreaker) IsHealthy() bool {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
 
-	return cb.state.State == StateClosed && cb.state.HealthScore > 70.0
+	return cb.state.State == AdvStateClosed && cb.state.HealthScore > 70.0
 }
 
 // Helper functions

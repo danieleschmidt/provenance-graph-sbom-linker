@@ -3,6 +3,7 @@ package research
 import (
 	"context"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -690,9 +691,6 @@ func (rg *ReportGenerator) GenerateReport(reportType string, data map[string]int
 	// Generate report based on template and data
 	return []byte("Research report content"), nil
 }
-
-// Add math import at the top (missing import)
-import "math"
 
 // GetIntegrationStatistics returns comprehensive statistics about the integrated framework
 func (rfi *ResearchFrameworkIntegration) GetIntegrationStatistics() map[string]interface{} {

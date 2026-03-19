@@ -78,7 +78,7 @@ func setupStandaloneRoutes(cfg *config.Config) *gin.Engine {
 	router.Use(middleware.RequestSizeLimit(10 * 1024 * 1024)) // 10MB limit
 
 	// Health and observability endpoints (without database)
-	healthHandler := handlers.NewHealthHandler(nil) // No database
+	healthHandler := handlers.NewHealthHandler(nil, nil) // No database
 	router.GET("/health", healthHandler.HealthCheck)
 	router.GET("/health/ready", healthHandler.ReadinessCheck)
 	router.GET("/health/live", healthHandler.LivenessCheck)

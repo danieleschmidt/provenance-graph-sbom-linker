@@ -2,7 +2,6 @@ package integration
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/config"
-	"github.com/danieleschmidt/provenance-graph-sbom-linker/internal/handlers"
 	"github.com/danieleschmidt/provenance-graph-sbom-linker/pkg/types"
 )
 
@@ -341,7 +339,7 @@ func generateTestSBOM(t *testing.T, client *http.Client, baseURL, artifactID str
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	require.NoError(t, err)
 
-	sbomData, ok := result["sbom"].(map[string]interface{})
+	_, ok := result["sbom"].(map[string]interface{})
 	require.True(t, ok)
 
 	// Convert back to SBOM struct (simplified for test)

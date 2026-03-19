@@ -116,7 +116,7 @@ func (p *DatabasePool) InitializeRedis(addr, password string, db int) error {
 	})
 
 	// Test connectivity  
-	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	
 	if err := p.redisClient.Ping(ctx).Err(); err != nil {
@@ -386,7 +386,7 @@ func (hc *HealthChecker) checkServices() {
 	defer hc.mu.Unlock()
 
 	for name, checkFn := range hc.services {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		err := checkFn()
 		cancel()
 		

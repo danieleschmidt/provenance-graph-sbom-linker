@@ -1,0 +1,177 @@
+{
+  "sbom_id": "37bb95fb-aeb4-499d-92cd-8966926fc725",
+  "format": "cyclonedx",
+  "generated_at": "2026-03-19T04:55:21Z",
+  "node_count": 8,
+  "edge_count": 9,
+  "nodes": [
+    {
+      "id": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "bom_ref": "provenance-graph-sbom-linker-v1.0.0",
+      "name": "provenance-graph-sbom-linker",
+      "version": "v1.0.0",
+      "type": "application",
+      "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "attestation": "a05b4b25165fa2bdba1fccbae93280839d1a30246e4cc1d0dd8309b957851696",
+      "chain_hash": "0121843da7a06203932ece0ddbfd4a3d5823a526f68c64b5af7f94cf5af83ab5",
+      "metadata": {
+        "description": "Supply chain provenance graph with SBOM parsing and cryptographic attestation",
+        "license": "Apache-2.0",
+        "purl": "pkg:golang/github.com/danieleschmidt/provenance-graph-sbom-linker@v1.0.0"
+      }
+    },
+    {
+      "id": "c73f8a35-3ede-469f-8a87-dfe62efabe2c",
+      "bom_ref": "gin-v1.10.1",
+      "name": "gin-gonic/gin",
+      "version": "v1.10.1",
+      "type": "library",
+      "hash": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+      "attestation": "77b3f5215a91f00ed19830619145265071638ad319f8e4b60aaa245757463669",
+      "chain_hash": "0fbc909e5ac16ae876f6d49ee465534bab1acdf562ed7cad53c54b2e1e3f11ac",
+      "metadata": {
+        "description": "Gin is a HTTP web framework written in Go (fastest)",
+        "license": "MIT",
+        "purl": "pkg:golang/github.com/gin-gonic/gin@v1.10.1"
+      }
+    },
+    {
+      "id": "efaa6b9e-126f-42ad-8961-d69dd158789a",
+      "bom_ref": "neo4j-v5.28.2",
+      "name": "neo4j/neo4j-go-driver",
+      "version": "v5.28.2",
+      "type": "library",
+      "hash": "2c624232cdd221771294dfbb310acbc7def170fd5df46f00435c20a5e5d64b4e",
+      "attestation": "ea2a170a36e951b126926bc1543568766303707a83e170609c841b17e1cee947",
+      "chain_hash": "1f846593bd1769be0953b013b2161cfa75025b1d2525e98011ca1fb845fe04fa",
+      "metadata": {
+        "description": "Neo4j driver for Go — graph database connectivity",
+        "license": "Apache-2.0",
+        "purl": "pkg:golang/github.com/neo4j/neo4j-go-driver/v5@v5.28.2"
+      }
+    },
+    {
+      "id": "e2226ca1-1fdc-486f-835e-31a22926e275",
+      "bom_ref": "uuid-v1.6.0",
+      "name": "google/uuid",
+      "version": "v1.6.0",
+      "type": "library",
+      "hash": "19581c0defdceb326ab0963e2c0ced8f2fcb1a2e9c5ce0e43e1202e8dd0d249f",
+      "attestation": "69263900ec1beff2973f73e602569a7816e4c811fdb9b4c97df79dc6929019a3",
+      "chain_hash": "9c1e8a6b7b03acd53a337577c7ee9846c53fddc9bdaddcb74584ece7618c9af3",
+      "metadata": {
+        "description": "Go package for UUIDs — RFC 4122 compliant",
+        "license": "BSD-3-Clause",
+        "purl": "pkg:golang/github.com/google/uuid@v1.6.0"
+      }
+    },
+    {
+      "id": "cb37fb21-3790-456b-92e3-5dbd65a81a4c",
+      "bom_ref": "redis-v9.12.1",
+      "name": "redis/go-redis",
+      "version": "v9.12.1",
+      "type": "library",
+      "hash": "4fd21e0682aa99b1c30ec5e01adaaf8b69a57c64e15a6a8df4b3b0deac7bb7f3",
+      "attestation": "ef7099e00a62c87beb0036935520d19da40a95780f04d2053854a17373edfe68",
+      "chain_hash": "e9f0ba6492c401a67b567b908c281467ac386c1c5020f9e371065621e377e911",
+      "metadata": {
+        "description": "Type-safe Redis client for Golang",
+        "license": "BSD-2-Clause",
+        "purl": "pkg:golang/github.com/redis/go-redis/v9@v9.12.1"
+      }
+    },
+    {
+      "id": "342c52c6-e7bb-4dc6-9d39-724b035a26c2",
+      "bom_ref": "jwt-v5.3.0",
+      "name": "golang-jwt/jwt",
+      "version": "v5.3.0",
+      "type": "library",
+      "hash": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+      "attestation": "3a8e66d338e3913f5f31aabc73055d12b06c35d81790af9fa3d890b5dbb5f4b0",
+      "chain_hash": "e4be08f218a2819a7e2546229977bdecf55cfc27d025bccb3891fc0cddfeec09",
+      "metadata": {
+        "description": "JSON Web Tokens for Go",
+        "license": "MIT",
+        "purl": "pkg:golang/github.com/golang-jwt/jwt/v5@v5.3.0"
+      }
+    },
+    {
+      "id": "abafea87-0eef-4c92-8f51-9cabf8623d07",
+      "bom_ref": "logrus-v1.9.3",
+      "name": "sirupsen/logrus",
+      "version": "v1.9.3",
+      "type": "library",
+      "hash": "d4c57f7ac18e9c43c8e9ad9bb2d80e1dbe1e37adcf0aff9c6da63fb6a37de38f",
+      "attestation": "80e0d12cdb5ecee81e245ed4551abd49f3be9f0fd5f04c99f02eda9082515baa",
+      "chain_hash": "02cb5f2a1034204abb0f25b1fe95a148a404c12d8689530bfb8c777175e57b99",
+      "metadata": {
+        "description": "Structured, pluggable logging for Go",
+        "license": "MIT",
+        "purl": "pkg:golang/github.com/sirupsen/logrus@v1.9.3"
+      }
+    },
+    {
+      "id": "ce23f9d4-6d56-4387-b373-eb6885a23f32",
+      "bom_ref": "otel-v1.37.0",
+      "name": "opentelemetry/otel",
+      "version": "v1.37.0",
+      "type": "library",
+      "hash": "ef2d249c4a3a4b0f34ebd66e3e34c8c4e5bc5d3e2ce15afb4b7e0ed4b8c62b8e",
+      "attestation": "70b718da51c29bc43cad3d55d6a4a0d048f0146856d95c499f4f372d2474c742",
+      "chain_hash": "701b138382fa2cc733d6f3ed2065d31e9a9f0e41a128be677efa25056a48ef7c",
+      "metadata": {
+        "description": "OpenTelemetry Go API and SDK",
+        "license": "Apache-2.0",
+        "purl": "pkg:golang/go.opentelemetry.io/otel@v1.37.0"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "c73f8a35-3ede-469f-8a87-dfe62efabe2c",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "efaa6b9e-126f-42ad-8961-d69dd158789a",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "e2226ca1-1fdc-486f-835e-31a22926e275",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "cb37fb21-3790-456b-92e3-5dbd65a81a4c",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "342c52c6-e7bb-4dc6-9d39-724b035a26c2",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "abafea87-0eef-4c92-8f51-9cabf8623d07",
+      "relation": "depends_on"
+    },
+    {
+      "from": "089f4f5f-fd56-49d3-a9b4-3b202c926ab0",
+      "to": "ce23f9d4-6d56-4387-b373-eb6885a23f32",
+      "relation": "depends_on"
+    },
+    {
+      "from": "c73f8a35-3ede-469f-8a87-dfe62efabe2c",
+      "to": "e2226ca1-1fdc-486f-835e-31a22926e275",
+      "relation": "depends_on"
+    },
+    {
+      "from": "ce23f9d4-6d56-4387-b373-eb6885a23f32",
+      "to": "abafea87-0eef-4c92-8f51-9cabf8623d07",
+      "relation": "depends_on"
+    }
+  ],
+  "root_hash": "eb23d230e51427680e23b8f0c235297f218c8a1cebba899e7569879653aefb12"
+}
